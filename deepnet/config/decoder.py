@@ -56,7 +56,7 @@ class ConfigParser:
 
     def replace_variable(self, value, var_name):
         var_value = self.get_value(self.config, var_name)
-        assert isinstance(var_value, dict), 'Currently, not supported dict variable expansion.'
+        assert not isinstance(var_value, dict), 'Currently, not supported dict variable expansion.'
         if isinstance(var_value, list):
             result = []
             for v in var_value:
