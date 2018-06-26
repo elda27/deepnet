@@ -61,7 +61,7 @@ class ConfigParser:
             result = []
             for v in var_value:
                 assert not isinstance(v, list)
-                replaced_v = result.append(value.replace('${' + var_name + '}', v))
+                replaced_v = value.replace('${' + var_name + '}', str(v))
                 result.append(self.try_cast(replaced_v, v))
             return result
         else:
