@@ -1,0 +1,29 @@
+import sys
+import os.path
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
+import pytest
+import auto_path
+import config
+
+@pytest.mark.parametrize(('config_string', 'check_params'), [
+('''
+[test1]
+mark=1
+[test2]
+mark="${test1.mark}"
+''', { 'test1.mark':1, 'test2.mark': 1} 
+),
+
+])
+def test_decoder(config_string, check_params):
+    param = config.loads(config_string)
+    for nest_key, answer in check_params.items():
+        nest_keys = nest_key.split('.')
+        temp_dict = param
+        for key in nest_keys:
+            temp_dict = temp_dict[key]
+        
+        assert temp_dict == answer, 'Incorrect value (Key:{nest_key})'.format(nest_key=nest_key)
+
+if __name__ == '__main__':
+    pytest.main()
