@@ -57,6 +57,24 @@ mark="${test1.mark}/test"
         'test3.mark': [ 'value1/test', 'value2/test', 'value3/test' ]
     } 
 ),
+('''
+[test1]
+mark=[ 'value1', 'value2', 'value3' ]
+value='value'
+[test2]
+mark="${test1.mark}"
+[test3]
+mark="${test1.mark}/test"
+[test4]
+mark="${test1.value}/${test1.mark}"
+''', 
+    {
+        'test1.mark': [ 'value1', 'value2', 'value3' ],
+        'test2.mark': [ 'value1', 'value2', 'value3' ], 
+        'test3.mark': [ 'value1/test', 'value2/test', 'value3/test' ],
+        'test4.mark': [ 'value/value1', 'value/value2', 'value/value3' ]
+    } 
+),
 ])
 def test_decoder_list_expansion(config_string, check_params):
     param = config.loads(config_string)
