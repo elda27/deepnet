@@ -1,4 +1,3 @@
-root_dir = 'D:\Users\kabashima\Workspace\RibSegmentation\dataset\2018-05v2\DRR'
 
 [config]
 exp_name = "rib_segmentation"
@@ -44,18 +43,19 @@ case_names = [
   "FLIP_KU069_SE000002",
   "FLIP_KU073_SE000002",
 ]
+root_dir = 'F:\dataset\2018-05v2\DRR'
 
 # Input declaration
 [[input]]
 label = ["image", "spacing"]
 type = "image"
 paths = [
-  "${root_dir}/${config.case_names}/*_image.mhd"
+  "${root_dir}/<case_names>/*_image.mhd"
 ]
 
 [[input]]
 label = ["label", "spacing"]
 type = "image"
 paths = [
-  "${root_dir}/${config.case_names}/*_label.mhd"
+  "${root_dir}/<case_names>/*_label.mhd"
 ]
