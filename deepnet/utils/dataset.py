@@ -85,7 +85,54 @@ class InstantDataset(chainer.dataset.DatasetMixin):
         )
         return [ result ]
 
+class RangeArray:
+    def __init__(self):
+        self.values = []
+        self.length = 0
+    
+    def append(self, begin, end, value):
+        self.values.append((begin, end, value))
+        self.length = max(self.length, end)
+
+    def get(self, index):
+        """ Get value from index.
+        
+        Args:
+            index (int): list index
+        
+        Raises:
+            IndexError: 
+        
+        Returns:
+            any: List value
+        
+        Warnings:
+            This function can't receive slice object.
+            If you use slice, you use __getitem__ method.
+        """
+        
+        for begin, end, value in self.values:
+            if begin <= index < end:
+                return value
+        raise IndexError('list idnex out of range')
+
+    def __getitem__(self, index):        
+        if isinstance(index, slice):
+            values =[]
+            for i in range(*index.indices()):
+                values.append(self.get(i))
+            return tuple(values)
+        elif isinstance(index, int):
+            return self.get(values)
+        else:
+            raise TypeError
+
+    def __len__(self):
+        return self.length
+
 class GeneralDataset(chainer.dataset.DatasetMixin):
+    input_methods = {}
+
     def __init__(self, config, indices):
         DEFAULT_GROUP = -1
         groups = {}
@@ -103,13 +150,21 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
             for input_ in inputs:
                 input_['type']
 
+                case_names = RangeArray()
+
+                paths = []
                 for case_name in self.case_names:
-                    paths = self.replace_index(input_['paths'], '<case_names>', case_name)
+                    current_paths = self.replace_index(input_['paths'], '<case_names>', case_name)
+                    case_names.append(len(paths), len(paths) + len(current_paths))
+                    paths.extend(current_paths)
 
                 stage_input[input_['label']] = {
                     'input': load_image,
                     'paths': paths,
                 }
+                
+                if 'case_name' in stage_input:
+                    stage_input['case_name'] = case_names
                 
             self.stage_inputs.append(stage_input)
 
@@ -126,6 +181,7 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
                     stage_input[label] = data
             inputs.append(stage_input)
         return inputs
+
     def replace_index(self, path_strs, var_name, var_value):
         paths = []
         for path in path_strs:
@@ -133,6 +189,16 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
             paths.extend(path_list)
         return paths
 
+    def __len__(self):
+        return max((len(stage_input) for stage_input in self.stage_inputs))
+
+def register_input_method(type_):
+    def _register_input_method(func):
+        GeneralDataset.input_methods[type_] = func
+        return func
+    return _register_input_method
+
+@register_input_method('image')
 def load_image(filename):
     _, ext = os.path.splitext( os.path.basename(filename) )
 
