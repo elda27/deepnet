@@ -17,6 +17,7 @@ import os.path
 from functools import reduce
 from itertools import cycle
 import json
+import config
 
 import connections
 
@@ -32,8 +33,10 @@ def main():
     train_index = parse_index_file(args.train_index)
     valid_index = parse_index_file(args.valid_index)
 
-    train_dataset = utils.dataset.GeneralDataset(args.dataset_config, train_index)
-    valid_dataset = utils.dataset.GeneralDataset(args.dataset_config, valid_index)
+    dataset_config = config.load(args.dataset_config)
+
+    train_dataset = utils.dataset.GeneralDataset(dataset_config, train_index)
+    valid_dataset = utils.dataset.GeneralDataset(dataset_config, valid_index)
     
     log_dir = get_log_dir(args.log_root_dir, args.log_index, args.stage_index)
     visualize_dir = os.path.join(log_dir, 'visualize_stage{}'.format(args.stage_index))
