@@ -1,6 +1,7 @@
 import argparse
 from deepnet.utils.network import NetworkNode
-from deepnet import *
+import deepnet
+import toml
 import numpy as np
 try:
     import cupy as cp
@@ -18,8 +19,6 @@ from functools import reduce
 from itertools import cycle
 import json
 
-import connections
-
 def main():
     parser = build_arguments()
     args = parser.parse_args()
@@ -32,9 +31,9 @@ def main():
     train_index = parse_index_file(args.train_index)
     valid_index = parse_index_file(args.valid_index)
 
-    train_dataset = utils.dataset.GeneralDataset(args.dataset_config, train_index)
-    valid_dataset = utils.dataset.GeneralDataset(args.dataset_config, valid_index)
-    
+    train_dataset = deepnet.utils.dataset.GeneralDataset(args.dataset_config, train_index)
+    valid_dataset = deepnet.utils.dataset.GeneralDataset(args.dataset_config, valid_index)
+
     log_dir = get_log_dir(args.log_root_dir, args.log_index, args.stage_index)
     visualize_dir = os.path.join(log_dir, 'visualize_stage{}'.format(args.stage_index))
     archive_dir = os.path.join(log_dir, 'model_stage{}'.format(args.stage_index))
@@ -48,6 +47,12 @@ def main():
     os.makedirs(visualize_dir, exist_ok=True)
     os.makedirs(archive_dir, exist_ok=True)
     os.makedirs(param_dir, exist_ok=True)
+
+    # load network configuration
+    network_config = toml.load(args.network_config)
+    network_config['hyper_parameter'] = parse_hyper_parameter(args.hyper_param, network_config['hyper_parameter'])
+    network_config = deepnet.config.expand_variable(network_config)
+    network_manager, visualizer = deepnet.network.init.build_network(network_config)
 
     optimizer = chainer.optimizers.Adam(args.lr_rate)
 
@@ -180,6 +185,10 @@ def build_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu', type=int, default=0, help='gpu id')
     parser.add_argument('--batch-size', type=int, default=5, help='batch size')
+
+    parser.add_argument('-d', '--dataset-config', type=str, required=True, help='A dataset configuraiton written by extended toml format.')
+    parser.add_argument('-n', '--network-config', type=str, required=True, help='A network configuraiton written by extended toml format.')
+    parser.add_argument('--hyper-param', type=str, default=None, nargs='*', help='Set hyper parameters defined on network config. (<param name>:<value>)')
     
     parser.add_argument('--n-channel', type=int, default=14, help='n channel of input data')
     parser.add_argument('--n-layers', type=int, default=5, help='n channel of input data')
@@ -191,6 +200,7 @@ def build_arguments():
     parser.add_argument('--n-max-train-iter', type=int, default=60000, help='Max iteration of train.')
     parser.add_argument('--n-max-valid-iter', type=int, default=None, help='Max iteration of validation.')
     parser.add_argument('--n-valid-step', type=int, default=5000, help='Step of validation every this iteration.')
+
 
     parser.add_argument('--dataset-dir', type=str, required=True, help='dataset directory')
     parser.add_argument('--log-root-dir', type=str, default='./log/')
@@ -266,6 +276,22 @@ def parse_index_file(filename):
         for line in fp.readlines():
             indices.append(line.strip())
     return indices
+
+def parse_hyper_parameter(params, defined_params):
+    result_params = {}
+    for param in params:
+        pos = param.find(':')
+        target = param[:pos]
+        value = param[pos+1:]
+        
+        assert target in defined_params, 'Unknown hyper parameter: {}'.format(target)
+
+        type_ = type(defined_params[target])
+        try:
+            result_params[target] = type_(value)
+        except:
+            raise TypeError('Invalid value detected on the cast:{}, str->{}'.format(value, type_))
+    return result_params
 
 if __name__ == '__main__':
     main()
