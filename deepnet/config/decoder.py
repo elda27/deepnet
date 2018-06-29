@@ -9,10 +9,11 @@ def loads(s):
     parser = ConfigParser(s)
     return parser.config
 
-def apply_variable(config):
+def expand_variable(config):
     parser = ConfigParser(None)
     parser.config = config
     parser.expand()
+    return parser.config
 
 class ConfigParser:
     def __init__(self, config_string):

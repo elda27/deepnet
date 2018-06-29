@@ -53,7 +53,7 @@ def main():
     network_config = toml.load(args.network_config)
     network_config['hyper_parameter'] = parse_hyper_parameter(args.hyper_param, network_config['hyper_parameter'])
     network_config = deepnet.config.expand_variable(network_config)
-    network_manager, visualizer = deepnet.network.init.build_network(network_config)
+    network_manager, visualizer = deepnet.network.init.build_networks(network_config)
 
     optimizer = chainer.optimizers.Adam(args.lr_rate)
 
