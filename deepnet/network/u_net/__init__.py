@@ -7,6 +7,7 @@ import numpy as np
 import warnings
 from deepnet import utils
 from deepnet.network.utils import bayesian_dropout
+from deepnet.network.init import register_network
 
 class UNetBlock(chainer.Chain):
     
@@ -87,6 +88,7 @@ class UNetBlock(chainer.Chain):
             
             return h
 
+@register_network('network.U-net')
 class UNet(chainer.Chain):
     """ Builds a U-Net architecture. """
 

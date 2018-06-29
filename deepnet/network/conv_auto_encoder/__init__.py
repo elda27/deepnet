@@ -6,6 +6,9 @@ import math
 import numpy as np
 from functools import reduce
 
+from deepnet.network.init import register_network
+
+@register_network('network.cae.encoder')
 class Encoder(chainer.Chain):
     def __init__(self,
         n_dim, in_channel, 
@@ -54,6 +57,7 @@ class Encoder(chainer.Chain):
         self.stores['fc'] = h
         return h
 
+@register_network('network.cae.decoder')
 class Decoder(chainer.Chain):
     def __init__(
         self, n_dim, out_channel, 
@@ -165,6 +169,7 @@ def ValiationAutoEncoderUnit(input_vector):
     ones = chainer.Variable(ones)
     return input_vector[:representation_dim] + input_vector[representation_dim:] * F.gaussian(0, ones)
 
+@register_network('network.cae')
 class ConvolutionalAutoEncoder(chainer.Chain):
     def __init__(self, 
         n_dim, in_out_channel, 
