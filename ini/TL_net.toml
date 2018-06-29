@@ -1,0 +1,62 @@
+[hyper_parameter]
+lw1 = 1e-3
+lw2 = 1e-5
+
+[[process]]
+label = "Encoder"
+type = "network.ConvolutionalAutoEncoder.Encoder"
+update = "(loss_euclid + ${hyper_parameter.lw1} * loss_xentropy + ${hyper_parameter.lw2} * loss_kernel)"
+
+[[process]]
+label = "Predictor"
+type = "network.U-net"
+update = "(loss_euclid + loss_xentropy + loss_kernel)"
+
+# Network declaration
+[[network]]
+input=["image", "label"]
+process="network.chainer.to_gpu"
+output=["gpu_image", "gpu_label"]
+
+[[network]]
+input="gpu_image"
+process="Predictor"
+output="gpu_pred_label"
+
+[[network]]
+input="gpu_label"
+process="Encoder"
+output="gpu_encoded_feature_from_gt_label"
+
+[[network]]
+input="gpu_pred_label"
+process="Encoder"
+output="gpu_encoded_feature_from_pred_label"
+
+[[network]]
+input=["gpu_pred_label"]
+process="network.chainer.to_cpu"
+output=["pred_label"]
+
+## Losses
+[[network]]
+input=[ "gpu_pred_label", "gpu_label" ]
+process="network.loss.sigmoid_cross_entropy"
+output="loss_xentropy"
+
+[[network]]
+input=["gpu_pred_label"]
+process="network.loss.euclidean_distance"
+output="loss_euclidean"
+
+[[network]]
+input=["Encoder", "Predictor"]
+process="network.loss.kernel_l2_norm"
+output="loss_kernel"
+
+# Visualize declaration
+[[visualize]]
+type="plot"
+x="iteration"
+y=["loss_adv_xray", "loss_adv_drr"]
+event={ trigger="step", value="50" }
