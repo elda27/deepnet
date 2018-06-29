@@ -9,14 +9,25 @@ def loads(s):
     parser = ConfigParser(s)
     return parser.config
 
+def apply_variable(config):
+    parser = ConfigParser(None)
+    parser.config = config
+    parser.expand()
+
 class ConfigParser:
     def __init__(self, config_string):
-        self.config = toml.loads(config_string)
         self.variable_pattern = re.compile(r'\$\{?(?P<variable>[\w\d_\.]+)\}?')
+        if config_string is None:
+            self.config = None
+            return
 
+        self.config = toml.loads(config_string)
+        self.expand()
+
+    def expand(self):
         for key, value in self.config.items():
             self.config[key] = self.recursive_apply_variables(value)
-        
+
     def try_cast(self, value, src_value):
         if isinstance(src_value, (float, int)):
             try:

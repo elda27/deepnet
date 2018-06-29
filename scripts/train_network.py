@@ -18,6 +18,7 @@ import os.path
 from functools import reduce
 from itertools import cycle
 import json
+import config
 
 def main():
     parser = build_arguments()

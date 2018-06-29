@@ -1,0 +1,73 @@
+
+[config]
+input = [
+  'image', 'body_bone_image'
+]
+
+[hyper_parameter]
+lw = 1e-3
+n_input_channel = 1
+n_output_channel = 1
+
+
+[[process]]
+label  = "Predictor"
+type   = "network.U-net"
+update = "loss_xentropy"
+
+# Network declaration
+[[network]]
+input=["image", "body_bone_image"]
+process="network.chainer.to_gpu"
+output=["gpu_image", "gpu_body_bone_image"]
+
+[[network]]
+input   = "gpu_body_bone_image"
+process = "arithmetric"
+output  = "gpu_label"
+
+operation = "gpu_body_bone_image > 0.015"
+
+[[network]]
+input="gpu_image"
+process="Predictor"
+output="gpu_pred_label"
+
+## Losses
+[[network]]
+input=[ "gpu_pred_label", "gpu_label" ]
+process="chainer.sigmoid_cross_entropy"
+output="loss_xentropy"
+
+# Process for visualization
+[[network]]
+input   = ["gpu_image", "gpu_label", "gpu_image", "gpu_pred_label"]
+process = "process.make_overlap_image"
+output  = ["gpu_overlap_label", "gpu_overlap_pred_label"]
+
+# Visualize declaration
+[[visualize]]
+type  = "image_write"
+image_names = [ 
+  "gpu_image", "gpu_body_bone_image", 
+  "gpu_pred_label", "gpu_label" 
+  ]
+output_filename = '{__train_iteration:08d}_{__index__}.mhd'
+num_images = 3
+
+[[visualize]]
+type = "TileImageVisualizer"
+output_filename = "{__train_iteration:08d}_tile.png"
+tile_shape = [5, 5]
+block_images =  [ 
+  'gpu_image', 'gpu_label', 'gpu_overlap_label',
+  'gpu_image', 'gpu_pred_label', 'gpu_overlap_pred_label'
+  ]
+block_shape = [3, 2]
+
+# [[visualize]]
+# type="plot"
+# x="iteration"
+# y=["loss_adv_xray", "loss_adv_drr"]
+# event={ trigger="step", value="50" }
+

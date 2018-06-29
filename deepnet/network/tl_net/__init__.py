@@ -3,7 +3,9 @@ from deepnet.network import utils, conv_auto_encoder
 import chainer.functions as F
 import chainer.links as L
 
+from deepnet.network.init import register_network
 
+@register_network('network.TL-net')
 class Segnet(chainer.Chain):
     def __init__(self,
         n_dims,
