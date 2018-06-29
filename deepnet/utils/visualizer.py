@@ -84,7 +84,7 @@ class Visualizer:
         '''
         raise NotImplementedError()
 
-@register_visualizer('write')
+@register_visualizer('image_write')
 class ImageWriter(Visualizer):
     def __init__(self, output_filename, num_images, image_names):
         self.num_images = num_images
