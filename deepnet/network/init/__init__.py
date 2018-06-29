@@ -50,8 +50,8 @@ def build_network_from_dict(config):
         proc = None
         updatable = False
         process_name = network_conf['process']
-        if process_name in _registed_process:
-            registed_proc = _registed_process[process_name]
+        if process_name in _created_process:
+            registed_proc = _created_process[process_name]
             proc = registed_proc['proc']
             updatable = 'update' in registed_proc['property']
         elif process_name in process._registed_process:
@@ -73,3 +73,5 @@ def build_network_from_dict(config):
                 updatable=updatable
                 )
             )
+    # Geneerate visualizer
+
