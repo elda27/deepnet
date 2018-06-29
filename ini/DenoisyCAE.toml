@@ -1,0 +1,63 @@
+
+[config]
+input = [
+  'image'
+]
+logging = [
+  "__train_iteration__",
+  "train.loss_euclidean",
+  "test.loss_euclidea"
+]
+archive_nodes = ['CAE']
+
+
+[hyper_parameter]
+n_channel = 3
+
+
+[[process]]
+label  = "Predictor"
+type   = "network.cae"
+update = "loss_euclidean"
+
+# Network declaration
+[[network]]
+input=["image"]
+process="network.chainer.to_gpu"
+output=["gpu_image"]
+
+[[network]]
+input="gpu_image"
+process="apply_gaussian"
+output="gpu_noisy_image"
+
+[[network]]
+input="gpu_noisy_image"
+process="Predictor"
+label="CAE"
+output="gpu_reconstruct_image"
+
+## Losses
+[[network]]
+input=[ "gpu_reconstruct_image", "gpu_image" ]
+process="chainer.batchL2Norm"
+output="loss_euclidean"
+
+# Visualize declaration
+[[visualize]]
+type  = "image_write"
+image_names = [ 
+  "gpu_image", "gpu_noisy_image", 
+  "gpu_reconstruct_image" 
+  ]
+output_filename = '{__train_iteration__:08d}_{__index__:03d}_{__name__}.mhd'
+num_images = 3
+
+[[visualize]]
+type = "TileImageVisualizer"
+output_filename = "{__train_iteration__:08d}_tile.png"
+tile_shape = [5, 5]
+block_images =  [ 
+  'gpu_image', 'gpu_noisy_label', 'gpu_reconstruct_image',
+  ]
+block_shape = [3, 1]
