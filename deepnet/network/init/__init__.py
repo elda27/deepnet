@@ -1,5 +1,5 @@
 import deepnet.config
-from deepnet.utils import network, process
+from deepnet.utils import network, process, visualizer
 import hashlib
 from datetime import datetime
 
@@ -7,6 +7,12 @@ _registed_network = {}
 _created_process = {}
 
 def register_network(name):
+    """Decorator function to register network by label.
+    
+    Args:
+        name (str): label of registering network
+    """
+
     assert name in _registed_network, 'Registering key name is exist. ' + name
     def _register_network(klass):
         _registed_network[name] = klass
@@ -14,9 +20,26 @@ def register_network(name):
     return _register_network
 
 def generate_network(name, **kwargs):
+    """Generate registed network from name
+    
+    Args:
+        name (str): Label of registered by register_network function.
+        kwargs : Network arguments.
+    
+    Returns:
+        object: Registed network coresponding name
+    """
+
     return _registed_network[name](**kwargs)
 
 def build_process(process_config):
+    """Construct process from process tag of the configuration.
+    
+    Args:
+        process_config (dict): An element of process tag of the configuration.
+    """
+
+    
     assert 'label' in process_config, 'Key error: ' + str(process_config)
     assert 'type' in process_config, 'Key error: ' + str(process_config)
     
@@ -29,12 +52,19 @@ def build_process(process_config):
 
     _created_process[label] = proc
 
+def build_networks(config):
+    """Construct network and visualizers from the configuration.
+    
+    Args:
+        config (dict): Configuration of network and visualization after variable expansion.
+    
+    Raises:
+        KeyError: If requirement keys are not available.
+    
+    Returns:
+        [network.NetworkManager, list[visualizer.Visualizer]]: Constructed NetworkManager and list of Visualizer objects.
+    """
 
-def build_network_from_config(filename):
-    conf = deepnet.config.load(filename)
-    return build_network_from_dict(conf)
-
-def build_network_from_dict(config):
     network_manager = network.NetworkManager(config['config']['input'])
 
     # Geenerate process
@@ -73,5 +103,15 @@ def build_network_from_dict(config):
                 updatable=updatable
                 )
             )
+    
     # Geneerate visualizer
+    visualizers = []
+    for network_conf in config['visualizer']:
+        assert 'type' in network_conf, \
+            'Key error: (Key: type, Dict:{})'.format(str(network_conf))
+        
+        type_name = network_conf['type']
+        del network_conf['type']
+        visualizers.append(visualizer.create_visualizer(type_name)(**network_conf))
 
+    return network_manager, visualizers
