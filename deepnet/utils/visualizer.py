@@ -23,22 +23,24 @@ import os.path
 from deepnet.utils import mhd
 from deepnet import utils
 
-RegistedVisualizers = {}
+_registed_visualizers = {}
 
 def register_visualizer(name):
     def _register_visualizer(func):
-        RegistedVisualizers[name] = func
+        assert name not in _registed_visualizers, 'Duplicating visualizer label.'
+        _registed_visualizers[name] = func
         return func
     return _register_visualizer
 
 def create_visualizer(name):
-    if name in RegistedVisualizers:
+    if name not in _registed_visualizers:
         raise ValueError('Unknown visualizer: {}'.format(name))
-    return RegistedVisualizers[name]
+    return _registed_visualizers[name]
 
 def save_image(filename, image, spacing):
     _, ext = os.path.splitext(filename)
     if ext in ('.png', '.jpg', '.jpeg'):
+        image = np.transpose(image, (2, 1, 0))
         imageio.imwrite(filename, image)
     elif ext in ('.mhd', '.mha'):
         mhd.write(filename, image, { 'ElementSpacing': spacing })
@@ -163,6 +165,7 @@ class MhdImageWriter(Visualizer):
     def get_figure(self):
         return self.images
 
+@register_visualizer('tile_image_visualizer')
 class TileImageVisualizer(Visualizer):
     def __init__(self, output_filename, tile_shape, block_images, block_shape):
         self.num_block = tile_shape[0] * tile_shape[1]
