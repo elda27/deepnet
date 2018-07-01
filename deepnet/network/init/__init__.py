@@ -1,10 +1,12 @@
 import deepnet.config
-from deepnet.utils import network, process, visualizer
+from deepnet import process
+from deepnet.utils import network, visualizer
 import hashlib
 from datetime import datetime
 
 _registed_network = {}
 _created_process = {}
+_updatable_process = []
 
 def register_network(name):
     """Decorator function to register network by label.
@@ -13,7 +15,7 @@ def register_network(name):
         name (str): label of registering network
     """
 
-    assert name in _registed_network, 'Registering key name is exist. ' + name
+    assert name not in _registed_network, 'Registering key name is exist. ' + name
     def _register_network(klass):
         _registed_network[name] = klass
         return klass
@@ -50,7 +52,22 @@ def build_process(process_config):
 
     proc = generate_network(type_name, **process_config)
 
-    _created_process[label] = proc
+    _created_process[label] = {
+        'proc': proc,
+        'property': process_config
+    }
+
+def get_process(name):
+    """Get created process.
+    
+    Args:
+        name (str): The name of process.
+    
+    Returns:
+        any: Create process.
+    """
+
+    return _created_process[name]
 
 def build_networks(config):
     """Construct network and visualizers from the configuration.
@@ -74,7 +91,7 @@ def build_networks(config):
     # Generate processing network
     for network_conf in config['network']:
         if 'label' not in network_conf:
-            now = bytes(str(datetime.now()))
+            now = str(datetime.now()).encode('ascii')
             network_conf['label'] = hashlib.md5(now).hexdigest()
 
         proc = None
@@ -84,11 +101,14 @@ def build_networks(config):
             registed_proc = _created_process[process_name]
             proc = registed_proc['proc']
             updatable = 'update' in registed_proc['property']
+            _updatable_process.append(proc)
+
         elif process_name in process._registed_process:
             proc = process._registed_process[process_name]
             updatable = False
+
         else:
-            raise KeyError('Unknown process:{process} [input: {input}, output: {output}]'.format(
+            raise KeyError('Unknown process:{process} <input: {input}, output: {output}>'.format(
                 process=process_name, 
                 input=network_conf['input'],
                 output=network_conf['output'],
@@ -106,7 +126,7 @@ def build_networks(config):
     
     # Geneerate visualizer
     visualizers = []
-    for network_conf in config['visualizer']:
+    for network_conf in config['visualize']:
         assert 'type' in network_conf, \
             'Key error: (Key: type, Dict:{})'.format(str(network_conf))
         
