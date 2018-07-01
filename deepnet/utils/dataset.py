@@ -27,7 +27,7 @@ class XpDataset(chainer.dataset.DatasetMixin):
         self.image_paths = []
         self.label_paths = []
         self.case_names = []
-        for case_name in case_names:
+        for case_name in case_names: # Set case names
             image_glob = os.path.join(patient_root, case_name, cls.image_format[image_type])
             self.image_paths.extend(glob.glob(image_glob))
             label_glob = os.path.join(patient_root, case_name, cls.label_format)
@@ -132,6 +132,7 @@ class RangeArray:
 
 class GeneralDataset(chainer.dataset.DatasetMixin):
     input_methods = {}
+    used_indices = 0.0
 
     def __init__(self, config, indices):
         DEFAULT_GROUP = -1
@@ -142,28 +143,49 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
             else:
                 groups.setdefault(input_field['stage'], []).append(input_field)
         
-        self.case_names = config['config']['case_names']
+        self.case_names = config['config']['case_names'] if 'case_names' in config['config'] else None 
         self.stage_inputs = []
 
-        for index, inputs in sorted(groups.items(), key=lambda x:x[0]):
+        for _, inputs in sorted(groups.items(), key=lambda x:x[0]):
             stage_input = {}
             for input_ in inputs:
                 input_['type']
-
-                case_names = RangeArray()
+                
+                case_names = None
 
                 paths = []
-                for case_name in self.case_names:
-                    current_paths = self.replace_index(input_['paths'], '<case_names>', case_name)
-                    case_names.append(len(paths), len(paths) + len(current_paths))
-                    paths.extend(current_paths)
+                if not isinstance(indices, float) and indices is not None:
+                    case_names = RangeArray()
 
+                    for case_name in indices:  # Replace case_name 
+                        assert case_name in self.case_names, 'Unknown case name'
+                        for path in input_['paths']:
+                            current_paths = self.replace_index(path, '<case_names>', case_name)
+                            self.case_names.append(len(paths), len(paths) + len(current_paths))
+                            paths.extend(current_paths)
+                else:
+                    assert GeneralDataset.used_indices < 1.0, 'Failed to split dataset because the dataset is fully used.'
+                    for path in input_['paths']:
+                        paths.extend(glob.glob(path))
+
+                    start_ratio = GeneralDataset.used_indices
+
+                    if indices is None or (start_ratio + indices) >= 1.0:
+                        indices = 1.0
+                        GeneralDataset.used_indices = 1.0
+                    else:
+                        GeneralDataset.used_indices += indices
+
+                    paths = paths[int(len(paths) * start_ratio) : int(len(paths) * GeneralDataset.used_indices)]
+
+                assert isinstance(input_['label'], str), 'The field of label must be string.'
+                assert len(paths), 'Founds dataset is empty. ' + str(input_['paths'])
                 stage_input[input_['label']] = {
                     'input': load_image,
                     'paths': paths,
                 }
                 
-                if 'case_name' in stage_input:
+                if 'case_name' in stage_input and case_names is not None:
                     stage_input['case_name'] = case_names
                 
             self.stage_inputs.append(stage_input)
@@ -190,7 +212,7 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
         return paths
 
     def __len__(self):
-        return max((len(stage_input) for stage_input in self.stage_inputs))
+        return max((len(data['paths']) for stage_input in self.stage_inputs for data in stage_input.values()))
 
 def register_input_method(type_):
     def _register_input_method(func):
@@ -210,5 +232,5 @@ def load_image(filename):
         
     elif ext in ('.png', '.jpg'):
         img = imageio.imread(filename)
-        
-        return img, None
+        return np.transpose(img.astype(np.float32), (2, 1, 0))
+    raise NotImplementedError('Not implemented extension: (File: {}, Ext: {})'.format(filename, ext))
