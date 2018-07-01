@@ -62,7 +62,7 @@ class ConfigParser:
         keys = var_key.split('.')
         for key in keys:
             if key not in dict_:
-                raise KeyError('Unknown variable: {}, '.format(var_key))
+                raise toml.TomlDecodeError('Unknown variable: {}, '.format(var_key))
             dict_ = dict_[key]
         return dict_
 
