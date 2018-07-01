@@ -11,9 +11,23 @@ import os.path
 import chainer
 import numpy
 
-def parse_index_file(filename):
+def parse_index_file(filename, ratio = None):
+    """Parse index file
+    
+    Args:
+        filename (str, None): A filename will be loaded.
+        ratio (float, optional): A separating ratio (Default:None)
+    
+    Returns:
+        str, float: Loaded indices
+    """
+
+
     indices = []
-    with open(filename) as fp:
+    if filename is None:
+        return ratio
+
+    with open(filename, 'r') as fp:
         for line in fp.readlines():
             indices.append(line.strip())
     return indices
