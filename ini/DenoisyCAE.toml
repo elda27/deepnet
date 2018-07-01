@@ -6,9 +6,10 @@ input = [
 logging = [
   "__train_iteration__",
   "train.loss_euclidean",
-  "test.loss_euclidea"
+  "valid.loss_euclidean"
 ]
 archive_nodes = ['CAE']
+optimizing_loss = ['loss_euclidean']
 
 
 [hyper_parameter]
@@ -20,15 +21,20 @@ label  = "Predictor"
 type   = "network.cae"
 update = "loss_euclidean"
 
+n_dim = 2
+in_out_channel = "${hyper_parameter.n_channel}"
+n_layers = 5
+dropout = "none"
+
 # Network declaration
 [[network]]
 input=["image"]
-process="network.chainer.to_gpu"
+process="to_gpu"
 output=["gpu_image"]
 
 [[network]]
 input="gpu_image"
-process="apply_gaussian"
+process="apply_gaussian_noise"
 output="gpu_noisy_image"
 
 [[network]]
@@ -40,7 +46,7 @@ output="gpu_reconstruct_image"
 ## Losses
 [[network]]
 input=[ "gpu_reconstruct_image", "gpu_image" ]
-process="chainer.batchL2Norm"
+process="loss.euclidean_distance"
 output="loss_euclidean"
 
 # Visualize declaration
@@ -50,14 +56,14 @@ image_names = [
   "gpu_image", "gpu_noisy_image", 
   "gpu_reconstruct_image" 
   ]
-output_filename = '{__train_iteration__:08d}_{__index__:03d}_{__name__}.mhd'
+output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__index__:03d}_{__name__}.jpg'
 num_images = 3
 
 [[visualize]]
-type = "TileImageVisualizer"
-output_filename = "{__train_iteration__:08d}_tile.png"
+type = "tile_image_visualizer"
+output_filename = "${visualize_dir}/{__train_iteration__:08d}_tile.png"
 tile_shape = [5, 5]
 block_images =  [ 
-  'gpu_image', 'gpu_noisy_label', 'gpu_reconstruct_image',
+  'gpu_image', 'gpu_noisy_image', 'gpu_reconstruct_image',
   ]
-block_shape = [3, 1]
+block_shape = [1, 3]
