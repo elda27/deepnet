@@ -14,7 +14,7 @@ class Encoder(chainer.Chain):
         n_dim, in_channel, 
         encode_dim=64, n_layers=4, 
         n_units=32, 
-        dropout='none', use_batch_norm=False, 
+        dropout='none', use_batch_norm=True, 
         #**kwargs
         ):
         self.layers = {}
