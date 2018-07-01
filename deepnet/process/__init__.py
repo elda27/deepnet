@@ -2,22 +2,43 @@ import chainer
 import chainer.functions as F
 import math
 import numpy as np
+NO_CUPY = False
 try:
     import cupy as cp
 except ImportError:
+    NO_CUPY = True
     pass
 from functools import reduce
 from itertools import cycle
 
 from deepnet import utils
-from . import loss
+
+_registed_process = {
+    'chainer.transpose': F.transpose,
+    'chainer.sigmoid_cross_entropy': F.sigmoid_cross_entropy,
+    'chainer.softmax_cross_entropy': F.softmax_cross_entropy,
+    'chainer.batch_l2_norm_squared': F.batch_l2_norm_squared,
+}
+
+def register_process(name = None):
+    def _register_process(func):
+        if name is None:
+            assert func.__name__ not in _registed_process
+            _registed_process[func.__name__] = func
+        else:
+            assert name not in _registed_process
+            _registed_process[name] = func
+        return func
+    return _register_process
 
 Attributes = {}
+
 
 def set_gpu_id(gpu_id):
     global Attributes
     Attributes['gpu_id'] = gpu_id
 
+@register_process()
 def normalize(*images):
     results = []
     for img in images:
@@ -27,6 +48,7 @@ def normalize(*images):
         results.append((img - amax) / (amax - amin + 1e-8))
     return results[0] if len(results) == 1 else results
 
+@register_process()
 def blend_image(*image_pairs):
     result_image = []
     for fore, back in zip(image_pairs[::2], image_pairs[1::2]):
@@ -39,6 +61,7 @@ def blend_image(*image_pairs):
         result_image.append(normalize(fore) * 0.5 + normalize(back) * 0.5)
     return result_image
 
+@register_process()
 def make_overlap_label(*images):
     result_image = []
     for image in images:
@@ -72,6 +95,7 @@ colors = [
     (99, 125, 138),  # Blue Gray
 ]
 
+@register_process()
 def map_index_label(img, colors=colors):
     assert img.ndim == 2, 'Actual: {}'.format(img.ndim)
     uniques = list(np.unique(img))
@@ -86,12 +110,15 @@ def map_index_label(img, colors=colors):
         result[2, mask] = color[2]
     return result
 
+@register_process()
 def cast_type(x, dtype):
     return chainer.Variable(x.data.astype(dtype))
 
+@register_process()
 def bias(x, multiply=1.0, bias_=1.0):
     return x * multiply + bias_
 
+@register_process()
 def apply_gaussian_noise(x, sigma=1.0, clip=None, device=-1):
     ones = None
     if device >= 0:
@@ -110,6 +137,7 @@ def apply_gaussian_noise(x, sigma=1.0, clip=None, device=-1):
 
     return result
 
+@register_process()
 def to_cpu(*input_list):
     output_list = []
     for input_ in input_list:
@@ -121,7 +149,11 @@ def to_cpu(*input_list):
         output_list.append(input_)
     return output_list
 
+@register_process()
 def to_gpu(*input_list):
+    if NO_CUPY:
+        return to_cpu(*input_list)
+        
     output_list = []
     for input_ in input_list:
         if isinstance(input_, list):
@@ -134,3 +166,50 @@ def to_gpu(*input_list):
         input_.to_gpu()
         output_list.append(input_)
     return output_list
+
+
+@register_process('loss.constrain_kernel')
+def constrain_kernel(network):
+    n_kernels = 0
+    norm = None
+    for node in network.updatable_node:
+        for lname, layer in node.model.layers:
+            if isinstance(layer, (chainer.links.ConvolutionND, chainer.links.DeconvolutionND)):
+                n_kernels += 1
+                if norm is None:
+                    norm = F.batch_l2_norm_squared(layer.W)
+                else:
+                    norm += F.batch_l2_norm_squared(layer.W)
+    return norm / n_kernels
+
+@register_process('loss.euclidean_distance')
+def euclidean_distance(x, t):
+    linear_shape = (x.shape[0], reduce(lambda x,y: x * y, x.shape[1:]))
+    return F.mean(F.batch_l2_norm_squared(F.reshape(x - t, linear_shape)))
+
+@register_process('loss.total_softmax_cross_entropy')
+def total_softmax_cross_entropy(x, t, normalize=False):
+    assert len(x) == len(t)
+    num_channels = len(t)
+    xs = F.expand_dims(x, axis=1)
+    ts = F.expand_dims(_make_overlap(t), axis=1)
+
+    def make_filled(img, fill_value):
+        xp = cp if isinstance(img.array, cp.ndarray) else np
+        return xp.ones((img.shape[0], 1) + img.shape[2:], xp.float32) * 1e-3
+
+    bg_xs = make_filled(xs[0], 1e-3)
+    
+    loss = [ F.softmax_cross_entropy(F.concat((bg_xs, xs[i]), axis=1), ts[i], normalize=normalize) for i in range(xs.shape[0]) ]
+    return sum(loss) / xs.shape[0]
+
+def _expand_background(labels):
+    xp = cp if isinstance(labels.array, cp.ndarray) else np
+    empty_label = xp.ones((labels.shape[0], 1) + labels.shape[2:], xp.float32) * 1e-3
+    empty_label = chainer.Variable(empty_label)
+    labels = F.concat((empty_label, chainer.Variable(labels.data.astype(xp.float32))), axis=1)
+    return labels
+
+def _make_overlap(labels):
+    labels = _expand_background(labels)
+    return F.argmax(labels, axis=1)
