@@ -1,3 +1,4 @@
+import auto_init
 import argparse
 from deepnet.utils.network import NetworkNode
 import deepnet
@@ -18,7 +19,6 @@ import os.path
 from functools import reduce
 from itertools import cycle
 import json
-import config
 
 def main():
     parser = build_arguments()
@@ -29,11 +29,12 @@ def main():
 
     assert args.stage_index > 0
 
-    train_index = parse_index_file(args.train_index)
-    valid_index = parse_index_file(args.valid_index)
+    dataset_config = deepnet.config.load(args.dataset_config)
+    train_index = deepnet.utils.parse_index_file(args.train_index, 0.9)
+    valid_index = deepnet.utils.parse_index_file(args.valid_index, None)
 
-    train_dataset = deepnet.utils.dataset.GeneralDataset(args.dataset_config, train_index)
-    valid_dataset = deepnet.utils.dataset.GeneralDataset(args.dataset_config, valid_index)
+    train_dataset = deepnet.utils.dataset.GeneralDataset(dataset_config, train_index)
+    valid_dataset = deepnet.utils.dataset.GeneralDataset(dataset_config, valid_index)
 
     log_dir = get_log_dir(args.log_root_dir, args.log_index, args.stage_index)
     visualize_dir = os.path.join(log_dir, 'visualize_stage{}'.format(args.stage_index))
@@ -51,98 +52,35 @@ def main():
 
     # load network configuration
     network_config = toml.load(args.network_config)
+    network_config = update_log_dir(network_config, log_dirs) # Update log directory
     network_config['hyper_parameter'] = parse_hyper_parameter(args.hyper_param, network_config['hyper_parameter'])
     network_config = deepnet.config.expand_variable(network_config)
-    network_manager, visualizer = deepnet.network.init.build_networks(network_config)
+    network_manager, visualizers = deepnet.network.init.build_networks(network_config)
 
+    # Setup logger
+    logger = [ 
+        deepnet.utils.logger.CsvLogger(
+            os.path.join(log_dir, 'log_stage{}.csv'.format(args.stage_index)), 
+            network_config['config']['logging']
+            ) 
+        ]
+    archive_nodes = network_config['config']['archive_nodes']
+    optimizing_loss = network_config['config']['optimizing_loss']
+
+    # Setup optimizer
+    optimizers = []
     optimizer = chainer.optimizers.Adam(args.lr_rate)
-
-    # Setup other environment for each stage
-    logger = []
-    archive_nodes = []
-    optimizing_loss = ''
-    if args.stage_index == 1:
-        archive_nodes = ['CAE']
-        optimizing_loss = 'loss_reconstruct'
-        logger.append(
-            utils.logger.CsvLogger(os.path.join(log_dir, 'log_stage1.csv'),
-                [
-                    '__train_iteration__', 
-                    'train.loss_softmax', 'valid.loss_softmax',
-                    'train.loss_sigmoid', 'valid.loss_sigmoid',
-                    'train.loss_euclidean', 'valid.loss_euclidean',
-                    'train.loss_reconstruct', 'valid.loss_reconstruct',
-                ])
-        )
-    elif args.stage_index == 2:
-        archive_nodes = ['Segnet']
-        optimizing_loss = 'loss_segment'
-        logger.append(
-            utils.logger.CsvLogger(os.path.join(log_dir, 'log_stage2.csv'),
-                [
-                    '__train_iteration__', 
-                    'train.loss_segment_softmax', 'valid.loss_segment_softmax',
-                    'train.loss_segment_sigmoid', 'valid.loss_segment_sigmoid',
-                    #'train.loss_segment_euclidean', 'valid.loss_segment_euclidean',
-                    'train.loss_segment', 'valid.loss_segment',
-                ])
-        )
-    elif args.stage_index == 3:
-        archive_nodes = ['Segnet', 'GroundtruthEncoder']
-        optimizing_loss = 'loss_total'
-        logger.append(
-            utils.logger.CsvLogger(os.path.join(log_dir, 'log_stage3.csv'),
-                [
-                    '__train_iteration__', 
-                    #'train.loss_segment_softmax', 'valid.loss_segment_softmax',
-                    'train.loss_segment_sigmoid', 'valid.loss_segment_sigmoid',
-                    'train.loss_encode_dims', 'valid.loss_encode_dims',
-                    'train.loss_total', 'valid.loss_total',
-                ])
-        )
-
-    # models
-    cae_model = network.conv_auto_encoder.ConvolutionalAutoEncoder(
-        2, args.n_channel, encode_dim=args.encode_dims, 
-        n_layers=args.n_layers,
-        dropout=args.dropout_mode, use_batch_norm=args.use_batch_norm,
-        )
-    segnet_model = network.tl_net.Segnet(
-        2, 1, cae_model.decoder,
-        use_skipping_connection=args.use_skipping_connection if args.stage_index >= 3 else 'none'
-    )
-    
-    if args.stage_index == 1:
-        optimizer.setup(cae_model)
-        optimizer.add_hook(chainer.optimizer.WeightDecay(0.01))
-
-    elif args.stage_index == 2:
-        optimizer.setup(segnet_model)
-        optimizer.add_hook(chainer.optimizer.WeightDecay(5e-4))
+    for model in deepnet.network.init._updatable_process:
+        optimizer.setup(model)
         
-        model_archive = list(glob.glob(os.path.join(log_dir, 'model_stage' + str(args.stage_index - 1), 'CAE_*.npz')))[-1]
-        chainer.serializers.load_npz(model_archive, cae_model)
-
-        segnet_model.decoder.disable_update()
-    elif args.stage_index == 3:
-        optimizer.setup(cae_model)
-        optimizer.setup(segnet_model)
-        optimizer.add_hook(chainer.optimizer.WeightDecay(5e-4))
-        
-        cae_archive = list(glob.glob(os.path.join(log_dir, 'model_stage1', 'CAE_*.npz')))[-1]
-        chainer.serializers.load_npz(cae_archive, cae_model)
-        
-        segnet_archive = list(glob.glob(os.path.join(log_dir, 'model_stage2', 'Segnet_*.npz')))[-1]
-        chainer.serializers.load_npz(segnet_archive, segnet_model)
-        
-
-    # Costruct network model
-    network_manager, visualizers = connections.build_network_for_ribcage(cae_model, segnet_model, args, log_dirs, args.stage_index)
-    #network_manager, visualizers = build_network_for_real_image(cae_model, args, log_dir)
+    optimizers.append(optimizer)
 
     # Save variables
     with open(os.path.join(param_dir, 'args.json'), 'w+') as fp:
         json.dump(vars(args), fp, indent=2)
+
+    with open(os.path.join(param_dir, 'network_config.json'), 'w+') as fp:
+        json.dump(network_config, fp, indent=2)
     
     ## Dump network architecture
     with open(os.path.join(param_dir, 'network_architectuire.json'), 'w+') as fp:
@@ -165,14 +103,16 @@ def main():
 
     # Start training. 
     train_config = vars(args)
-    train_config['progress_vars'] = ['{}:.3f'.format(optimizing_loss)]
+    train_config['progress_vars'] = [ '{}:.3f'.format(loss) for loss in optimizing_loss ]
 
-    trainer = utils.trainer.Trainer(
+    optimizer_dict = { loss: optimizer for loss, optimizer in zip(optimizing_loss, optimizers) }
+
+    trainer = deepnet.utils.trainer.Trainer(
         network=network_manager,
         train_iter=chainer.iterators.MultiprocessIterator(train_dataset, args.batch_size, shuffle=True, repeat=True),
         valid_iter=chainer.iterators.MultiprocessIterator(valid_dataset, args.batch_size, shuffle=False, repeat=False),
         visualizers=visualizers,
-        optimizer={optimizing_loss: optimizer},
+        optimizer=optimizer_dict,
         logger=logger,
         archive_dir=archive_dir,
         archive_nodes=archive_nodes,
@@ -187,29 +127,21 @@ def build_arguments():
     parser.add_argument('--gpu', type=int, default=0, help='gpu id')
     parser.add_argument('--batch-size', type=int, default=5, help='batch size')
 
-    parser.add_argument('-d', '--dataset-config', type=str, required=True, help='A dataset configuraiton written by extended toml format.')
-    parser.add_argument('-n', '--network-config', type=str, required=True, help='A network configuraiton written by extended toml format.')
+    parser.add_argument('--dataset-config', type=str, required=True, help='A dataset configuraiton written by extended toml format.')
+    parser.add_argument('--network-config', type=str, required=True, help='A network configuraiton written by extended toml format.')
     parser.add_argument('--hyper-param', type=str, default=None, nargs='*', help='Set hyper parameters defined on network config. (<param name>:<value>)')
     
-    parser.add_argument('--n-channel', type=int, default=14, help='n channel of input data')
-    parser.add_argument('--n-layers', type=int, default=5, help='n channel of input data')
+    #parser.add_argument('--n-channel', type=int, default=14, help='n channel of input data')
+    #parser.add_argument('--n-layers', type=int, default=5, help='n channel of input data')
 
-    parser.add_argument('--train-index', type=str, required=True, help='training indices text')
-    parser.add_argument('--valid-index', type=str, required=True, help='validation indices text')
-    parser.add_argument('--image-type', type=str, default='default', help='Specification of input image type.')
+    parser.add_argument('--train-index', type=str, default=None, help='training indices text')
+    parser.add_argument('--valid-index', type=str, default=None, help='validation indices text')
     parser.add_argument('--lr-rate', type=float, default=1e-4, help='Learning rate')
     parser.add_argument('--n-max-train-iter', type=int, default=60000, help='Max iteration of train.')
     parser.add_argument('--n-max-valid-iter', type=int, default=None, help='Max iteration of validation.')
     parser.add_argument('--n-valid-step', type=int, default=5000, help='Step of validation every this iteration.')
 
-
-    parser.add_argument('--dataset-dir', type=str, required=True, help='dataset directory')
     parser.add_argument('--log-root-dir', type=str, default='./log/')
-    parser.add_argument('--use-skipping-connection', type=str, default='none', help='Skipping connection method(none[default], add)')
-    parser.add_argument('--dropout-mode', type=str, default='dropout')
-    parser.add_argument('--use-batch-norm', type=str2bool, default=True)
-    parser.add_argument('--denoisy', type=str2bool, default=True)
-    parser.add_argument('--encode-dims', type=int, default=64)
     parser.add_argument('--log-index', type=int, default=None, help='Log direcotry index for training.')
     parser.add_argument('--stage-index', type=int, default=1, help='Stage index')
 
@@ -270,14 +202,7 @@ def get_new_log_dir(root_dir, opt_name = '', start_index = 0):
     out = os.path.join(root_dir, cur_dir)
     os.makedirs(out, exist_ok=True)
     return out
-
-def parse_index_file(filename):
-    indices = []
-    with open(filename) as fp:
-        for line in fp.readlines():
-            indices.append(line.strip())
-    return indices
-
+    
 def parse_hyper_parameter(params, defined_params):
     result_params = {}
     for param in params:
@@ -293,6 +218,13 @@ def parse_hyper_parameter(params, defined_params):
         except:
             raise TypeError('Invalid value detected on the cast:{}, str->{}'.format(value, type_))
     return result_params
+
+def update_log_dir(network_config, log_dir):
+    network_config['log_dir'] = log_dir['root']
+    network_config['visualize_dir'] = log_dir['visualize']
+    network_config['archive_dir'] = log_dir['archive']
+    network_config['param_dir'] = log_dir['param']
+    return network_config
 
 if __name__ == '__main__':
     main()
