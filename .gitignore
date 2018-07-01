@@ -3,7 +3,9 @@ __pycache__
 .pytest_cache
 .vs
 .vscode
+.DS_Store
 debug/
+log/
 *.nc
 *.png
 *.npy
