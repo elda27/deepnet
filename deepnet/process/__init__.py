@@ -16,6 +16,7 @@ from deepnet import utils
 _registed_process = {
     'chainer.sigmoid': F.sigmoid,
     'chainer.transpose': F.transpose,
+    'chainer.expand_dims', F.expand_dims,
     'chainer.sigmoid_cross_entropy': F.sigmoid_cross_entropy,
     'chainer.softmax_cross_entropy': F.softmax_cross_entropy,
     'chainer.batch_l2_norm_squared': F.batch_l2_norm_squared,
