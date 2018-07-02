@@ -4,6 +4,7 @@ from deepnet.utils import network, visualizer
 import hashlib
 from datetime import datetime
 from time import sleep
+import copy
 
 _registed_network = {}
 _created_process = {}
@@ -116,13 +117,20 @@ def build_networks(config):
                 output=network_conf['output'],
                 ))
 
+        args = copy.deepcopy(network_conf)
+        try:
+            del args['label'], args['input'], args['output'], args['process']
+        except:
+            pass
+
         network_manager.add(
             network_conf['label'], 
             network.NetworkNode(
                 network_conf['input'],
                 network_conf['output'], 
                 proc, 
-                updatable=updatable
+                updatable=updatable,
+                args=args
                 )
             )
     
