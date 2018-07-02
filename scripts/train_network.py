@@ -204,6 +204,9 @@ def get_new_log_dir(root_dir, opt_name = '', start_index = 0):
     return out
     
 def parse_hyper_parameter(params, defined_params):
+    if params is None:
+        return defined_params
+        
     result_params = {}
     for param in params:
         pos = param.find(':')
