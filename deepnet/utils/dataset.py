@@ -229,7 +229,7 @@ def load_image(filename):
 
         if img.ndim == 2:
             img = img[np.newaxis, :, :]
-            spacing = (1, ) + spacing
+            spacing = [1, ] + spacing
                 
         return img, spacing
         
