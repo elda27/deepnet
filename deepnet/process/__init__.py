@@ -40,10 +40,16 @@ def set_gpu_id(gpu_id):
     Attributes['gpu_id'] = gpu_id
 
 @register_process()
-def binary(threshold, *images):
+def binary(*images, threshold=None):
+    assert threshold is not None, '"threshold" is requirement argument'
+
     bin_images = []
     for image in images:
-        bin_images.append(image > threshold)
+        assert not isinstance(image, chainer.Variable), 'Unsupported chainer.Variable.'
+        if isinstance(image, list):
+            bin_images.append([(img > threshold).astype(np.int32) for img in image ])
+        else:
+            bin_images.append(image > threshold)
     return bin_images
 
 @register_process()
@@ -165,8 +171,9 @@ def to_gpu(*input_list):
     output_list = []
     for input_ in input_list:
         if isinstance(input_, list):
-            input_ = [ F.expand_dims(chainer.Variable(i), axis=0) for i in input_ ]
-            input_ = F.concat(input_, axis=0)
+            #input_ = [ F.expand_dims(chainer.Variable(i), axis=0) for i in input_ ]
+            #input_ = F.concat(input_, axis=0)
+            input_ = chainer.Variable(np.concatenate([ np.expand_dims(i, axis=0) for i in input_ ], axis=0))
         elif isinstance(input_, chainer.Variable):
             input_ = F.copy(input_, -1)
         else:
