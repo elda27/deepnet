@@ -226,11 +226,7 @@ def load_image(filename):
     if ext in ('.mha', '.mhd'):
         [img, img_header] = mhd.read(filename)
         spacing = img_header['ElementSpacing']
-
-        if img.ndim == 2:
-            img = img[np.newaxis, :, :]
-            spacing = [1, ] + spacing
-                
+        
         return img, spacing
         
     elif ext in ('.png', '.jpg'):
