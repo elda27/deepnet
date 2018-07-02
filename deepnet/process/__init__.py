@@ -39,6 +39,13 @@ def set_gpu_id(gpu_id):
     Attributes['gpu_id'] = gpu_id
 
 @register_process()
+def binary(threshold, *images):
+    bin_images = []
+    for image in images:
+        bin_images.append(image > threshold)
+    return bin_images
+
+@register_process()
 def normalize(*images):
     results = []
     for img in images:
