@@ -159,10 +159,9 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
 
                     for case_name in indices:  # Replace case_name 
                         assert case_name in self.case_names, 'Unknown case name: ' + case_name + str(self.case_names)
-                        for path in input_['paths']:
-                            current_paths = self.replace_index(path, '<case_names>', case_name)
-                            case_names.append(len(paths), len(paths) + len(current_paths), case_name)
-                            paths.extend(current_paths)
+                        current_paths = self.glob_case_dir(input_['paths'], '<case_names>', case_name)
+                        case_names.append(len(paths), len(paths) + len(current_paths), case_name)
+                        paths.extend(current_paths)
                 else:
                     assert GeneralDataset.used_indices < 1.0, 'Failed to split dataset because the dataset is fully used.'
                     for path in input_['paths']:
@@ -204,7 +203,7 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
             inputs.append(stage_input)
         return inputs
 
-    def replace_index(self, path_strs, var_name, var_value):
+    def glob_case_dir(self, path_strs, var_name, var_value):
         paths = []
         for path in path_strs:
             path_list = list(glob.glob(path.replace(var_name, var_value)))
