@@ -5,10 +5,9 @@ input = [
 ]
 
 [hyper_parameter]
-lw = 1e-3
 n_input_channel = 1
 n_output_channel = 1
-
+threshold = 0.015
 
 [[process]]
 label  = "Predictor"
@@ -23,23 +22,28 @@ output=["gpu_image", "gpu_body_bone_image"]
 
 [[network]]
 input   = "gpu_body_bone_image"
-process = "arithmetric"
+process = "binary"
 output  = "gpu_label"
 
-operation = "gpu_body_bone_image > 0.015"
+threshold = "${hyper_param.threshold}"
 
 [[network]]
 input="gpu_image"
 process="Predictor"
-output="gpu_pred_label"
+output="gpu_raw_pred_label"
 
 ## Losses
 [[network]]
-input=[ "gpu_pred_label", "gpu_label" ]
+input=[ "gpu_raw_pred_label", "gpu_label" ]
 process="chainer.sigmoid_cross_entropy"
 output="loss_xentropy"
 
 # Process for visualization
+[[network]]
+input   = "gpu_raw_pred_label"
+process = "chainer.sigmoid"
+output  = "gpu_pred_label"
+
 [[network]]
 input   = ["gpu_image", "gpu_label", "gpu_image", "gpu_pred_label"]
 process = "process.make_overlap_image"
@@ -52,12 +56,12 @@ image_names = [
   "gpu_image", "gpu_body_bone_image", 
   "gpu_pred_label", "gpu_label" 
   ]
-output_filename = '{__train_iteration:08d}_{__index__}.mhd'
+output_filename = '${visualize_dir}/{__train_iteration:08d}_{__index__}.mhd'
 num_images = 3
 
 [[visualize]]
 type = "TileImageVisualizer"
-output_filename = "{__train_iteration:08d}_tile.png"
+output_filename = "${visualize_dir}/{__train_iteration:08d}_tile.png"
 tile_shape = [5, 5]
 block_images =  [ 
   'gpu_image', 'gpu_label', 'gpu_overlap_label',
