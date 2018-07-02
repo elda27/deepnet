@@ -3,6 +3,7 @@ from deepnet import process
 from deepnet.utils import network, visualizer
 import hashlib
 from datetime import datetime
+from time import sleep
 
 _registed_network = {}
 _created_process = {}
@@ -91,6 +92,7 @@ def build_networks(config):
     # Generate processing network
     for network_conf in config['network']:
         if 'label' not in network_conf:
+            sleep(1e-6)
             now = str(datetime.now()).encode('ascii')
             network_conf['label'] = hashlib.md5(now).hexdigest()
 
