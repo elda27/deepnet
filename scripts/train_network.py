@@ -71,6 +71,8 @@ def main():
     optimizers = []
     optimizer = chainer.optimizers.Adam(args.lr_rate)
     for model in deepnet.network.init._updatable_process:
+        if args.gpu >=0:
+            model.to_gpu()
         optimizer.setup(model)
         
     optimizers.append(optimizer)
