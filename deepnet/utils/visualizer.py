@@ -116,8 +116,8 @@ class ImageWriter(Visualizer):
                 spacing = None
                 if 'spacing' in self.variables:
                     spacing = self.variables['spacing'][i]
-                    if len(spacing) < img.ndim:
-                        spacing = tuple(spacing) + (1,) * (img.ndim - len(spacing))
+                    if len(spacing) < image.ndim:
+                        spacing = tuple(spacing) + (1,) * (image.ndim - len(spacing))
 
                 save_image(self.output_filename.format(**self.variables, __index__=i, __name__=name), image, spacing)
 
