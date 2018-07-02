@@ -50,5 +50,11 @@ root_dir = 'F:\dataset\2018-05v2\DRR'
 label = ["image", "spacing"]
 type = "image"
 paths = [
+  "${config.root_dir}/<case_names>/*_image.mhd"
+]
+[[input]]
+label = ["body_bone_image", "body_bone_image_spacing"]
+type = "image"
+paths = [
   "${config.root_dir}/<case_names>/*_image_body_bone.mhd"
 ]

@@ -4,6 +4,13 @@ input = [
   'image', 'body_bone_image'
 ]
 
+logging = [
+  '__train_iteration__', 'train.loss_xentropy', 'valid.loss_xentropy'
+]
+
+archive_nodes = ['CAE']
+optimizing_loss = ['loss_xentropy']
+
 [hyper_parameter]
 n_input_channel = 1
 n_output_channel = 1
@@ -14,10 +21,14 @@ label  = "Predictor"
 type   = "network.U-net"
 update = "loss_xentropy"
 
+in_channel = "${hyper_parameter.n_input_channel}"
+out_channel = "${hyper_parameter.n_output_channel}"
+
+
 # Network declaration
 [[network]]
 input=["image", "body_bone_image"]
-process="network.chainer.to_gpu"
+process="to_gpu"
 output=["gpu_image", "gpu_body_bone_image"]
 
 [[network]]
@@ -25,7 +36,7 @@ input   = "gpu_body_bone_image"
 process = "binary"
 output  = "gpu_label"
 
-threshold = "${hyper_param.threshold}"
+threshold = "${hyper_parameter.threshold}"
 
 [[network]]
 input="gpu_image"
@@ -46,7 +57,7 @@ output  = "gpu_pred_label"
 
 [[network]]
 input   = ["gpu_image", "gpu_label", "gpu_image", "gpu_pred_label"]
-process = "process.make_overlap_image"
+process = "make_overlap_label"
 output  = ["gpu_overlap_label", "gpu_overlap_pred_label"]
 
 # Visualize declaration
@@ -60,14 +71,14 @@ output_filename = '${visualize_dir}/{__train_iteration:08d}_{__index__}.mhd'
 num_images = 3
 
 [[visualize]]
-type = "TileImageVisualizer"
+type = "tile_image_visualizer"
 output_filename = "${visualize_dir}/{__train_iteration:08d}_tile.png"
 tile_shape = [5, 5]
 block_images =  [ 
   'gpu_image', 'gpu_label', 'gpu_overlap_label',
   'gpu_image', 'gpu_pred_label', 'gpu_overlap_pred_label'
   ]
-block_shape = [3, 2]
+block_shape = [2, 3]
 
 # [[visualize]]
 # type="plot"
