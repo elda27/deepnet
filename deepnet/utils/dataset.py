@@ -155,6 +155,7 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
 
                 paths = []
                 if not isinstance(indices, float) and indices is not None:
+                    # If dataset has some cases
                     case_names = RangeArray()
 
                     for case_name in indices:  # Replace case_name 
@@ -177,7 +178,6 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
 
                     paths = paths[int(len(paths) * start_ratio) : int(len(paths) * GeneralDataset.used_indices)]
 
-                #assert isinstance(input_['label'], str), 'The field of label must be string.'
                 assert len(paths), 'Founds dataset is empty. ' + str(input_['paths'])
                 stage_input[tuple(input_['label'])] = {
                     'input': load_image,
@@ -226,6 +226,10 @@ def load_image(filename):
     if ext in ('.mha', '.mhd'):
         [img, img_header] = mhd.read(filename)
         spacing = img_header['ElementSpacing']
+
+        if img.ndim == 2:
+            img = img[np.newaxis, :, :]
+            spacing = (1, ) + spacing
                 
         return img, spacing
         
