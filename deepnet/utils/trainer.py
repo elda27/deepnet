@@ -62,11 +62,12 @@ class Trainer:
                 # Back propagation and update network 
                 for loss_name, optimizer in self.optimizer.items():
                     loss = variables[loss_name]
+                    if i == 0:
+                        self.write_network_architecture(os.path.join(self.archive_dir, 'model_{}.dot'.format(loss_name)), loss)
+                    
                     self.network.update()
                     loss.backward()
                     optimizer.update()
-                    if i == 0:
-                        self.write_network_architecture(os.path.join(self.archive_dir, 'model_{}.dot'.format(loss_name)), loss)
 
                 # Update variables and unwrapping chainer variable
                 for var_name, value in variables.items():
