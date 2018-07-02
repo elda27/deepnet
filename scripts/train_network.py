@@ -159,6 +159,21 @@ def str2bool(string):
         raise ValueError('Unknown flag value: {}'.format(string))
 
 def get_log_dir(root_dir, log_index, stage_index, opt_name = ''):
+    """Get log directory
+    
+    Args:
+        root_dir (str): Root directory of log.
+        log_index (int): Index of log directory. If None, index will solve automatically. 
+        stage_index (int): Index of learning stage. 
+        opt_name (str, optional): Prefix of log directory (Default: '')
+    
+    Raises:
+        ValueError: If log directory is empty when stage_index over than 2
+    
+    Returns:
+        str: log directory
+    """
+
     if log_index is None:
         if stage_index == 1: # 1st stage training and log index is automatically generation
             return get_new_log_dir(root_dir, opt_name=opt_name)
