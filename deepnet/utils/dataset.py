@@ -158,10 +158,10 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
                     case_names = RangeArray()
 
                     for case_name in indices:  # Replace case_name 
-                        assert case_name in self.case_names, 'Unknown case name'
+                        assert case_name in self.case_names, 'Unknown case name: ' + case_name + str(self.case_names)
                         for path in input_['paths']:
                             current_paths = self.replace_index(path, '<case_names>', case_name)
-                            self.case_names.append(len(paths), len(paths) + len(current_paths))
+                            case_names.append(len(paths), len(paths) + len(current_paths), case_name)
                             paths.extend(current_paths)
                 else:
                     assert GeneralDataset.used_indices < 1.0, 'Failed to split dataset because the dataset is fully used.'
@@ -178,9 +178,9 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
 
                     paths = paths[int(len(paths) * start_ratio) : int(len(paths) * GeneralDataset.used_indices)]
 
-                assert isinstance(input_['label'], str), 'The field of label must be string.'
+                #assert isinstance(input_['label'], str), 'The field of label must be string.'
                 assert len(paths), 'Founds dataset is empty. ' + str(input_['paths'])
-                stage_input[input_['label']] = {
+                stage_input[tuple(input_['label'])] = {
                     'input': load_image,
                     'paths': paths,
                 }
@@ -197,7 +197,7 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
             for label, input_method in stage_input_method.items():
                 paths = input_method['paths']
                 data = input_method['input'](paths[index % len(paths)])
-                if isinstance(label, list):
+                if isinstance(label, tuple):
                     stage_input.update(zip(label, data))
                 else:
                     stage_input[label] = data
