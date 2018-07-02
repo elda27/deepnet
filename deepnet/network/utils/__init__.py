@@ -2,6 +2,7 @@ import chainer
 from chainer import functions as F
 from chainer import links as L
 from chainer.utils import argument
+import numpy as np
 
 def bayesian_dropout(x, ratio=.5, **kwargs):
     """bayesian_dropout(x, ratio=.5)
@@ -35,6 +36,33 @@ def bayesian_dropout(x, ratio=.5, **kwargs):
     else:
         return F.Dropout(ratio).apply((x,))[0]
 
+# https://github.com/shelhamer/fcn.berkeleyvision.org/blob/master/surgery.py
+def get_upsampling_filter_2d(size):
+    """Make a 2D bilinear kernel suitable for upsampling"""
+    factor = (size + 1) // 2
+    if size % 2 == 1:
+        center = factor - 1
+    else:
+        center = factor - 0.5
+    og = np.ogrid[:size, :size]
+    filter = (1 - abs(og[0] - center) / factor) * \
+             (1 - abs(og[1] - center) / factor)
+    return filter
+
+    
+def get_upsampling_filter_3d(size):
+    """Make a 3D bilinear kernel suitable for upsampling"""
+    factor = (size + 1) // 2
+    if size % 2 == 1:
+        center = factor - 1
+    else:
+        center = factor - 0.5
+    og = np.ogrid[:size, :size, :size]
+    filter = (1 - abs(og[0] - center) / factor) * \
+             (1 - abs(og[1] - center) / factor) * \
+             (1 - abs(og[2] - center) / factor)
+    return filter
+    
 def crop(t, shape, n_dim = 2):
     '''
       Cropping t by x.shape
