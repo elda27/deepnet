@@ -14,6 +14,7 @@ from itertools import cycle
 from deepnet import utils
 
 _registed_process = {
+    'chainer.sigmoid': F.sigmoid,
     'chainer.transpose': F.transpose,
     'chainer.sigmoid_cross_entropy': F.sigmoid_cross_entropy,
     'chainer.softmax_cross_entropy': F.softmax_cross_entropy,
