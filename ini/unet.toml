@@ -8,7 +8,7 @@ logging = [
   '__train_iteration__', 'train.loss_xentropy', 'valid.loss_xentropy'
 ]
 
-archive_nodes = ['CAE']
+archive_nodes = ['Predictor']
 optimizing_loss = ['loss_xentropy']
 
 [hyper_parameter]
@@ -26,17 +26,18 @@ out_channel = "${hyper_parameter.n_output_channel}"
 
 
 # Network declaration
-[[network]]
-input=["image", "body_bone_image"]
-process="to_gpu"
-output=["gpu_image", "gpu_body_bone_image"]
 
 [[network]]
-input   = "gpu_body_bone_image"
+input   = "body_bone_image"
 process = "binary"
-output  = "gpu_label"
+output  = "label"
 
 threshold = "${hyper_parameter.threshold}"
+
+[[network]]
+input=["image", "label"]
+process="to_gpu"
+output=["gpu_image", "gpu_label"]
 
 [[network]]
 input="gpu_image"
@@ -64,15 +65,15 @@ output  = ["gpu_overlap_label", "gpu_overlap_pred_label"]
 [[visualize]]
 type  = "image_write"
 image_names = [ 
-  "gpu_image", "gpu_body_bone_image", 
+  "gpu_image", "body_bone_image", 
   "gpu_pred_label", "gpu_label" 
   ]
-output_filename = '${visualize_dir}/{__train_iteration:08d}_{__index__}.mhd'
+output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__index__}.mhd'
 num_images = 3
 
 [[visualize]]
 type = "tile_image_visualizer"
-output_filename = "${visualize_dir}/{__train_iteration:08d}_tile.png"
+output_filename = "${visualize_dir}/{__train_iteration__:08d}_tile.png"
 tile_shape = [5, 5]
 block_images =  [ 
   'gpu_image', 'gpu_label', 'gpu_overlap_label',
