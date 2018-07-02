@@ -6,7 +6,7 @@ from chainer.utils import argument
 import numpy as np
 import warnings
 from deepnet import utils
-from deepnet.network.utils import bayesian_dropout
+from deepnet.network.utils import bayesian_dropout, get_upsampling_filter_2d, get_upsampling_filter_3d
 from deepnet.network.init import register_network
 
 class UNetBlock(chainer.Chain):
@@ -17,7 +17,7 @@ class UNetBlock(chainer.Chain):
                  n_dims, 
                  in_channels, 
                  hidden_channels, 
-                 out_channels, 
+                 out_channel, 
                  kernel_size=3, 
                  initialW=initializers.HeNormal(), 
                  initial_bias=None, 
@@ -28,7 +28,7 @@ class UNetBlock(chainer.Chain):
         self.n_dims = n_dims
         self.in_channels = in_channels
         self.hidden_channels = hidden_channels
-        self.out_channels = out_channels  
+        self.out_channel = out_channel  
         self.kernel_size = kernel_size 
         self.initialW = initialW
         self.initial_bias = initial_bias
@@ -44,21 +44,21 @@ class UNetBlock(chainer.Chain):
         
             if self.block_type == 'default':
                 self.conv_1=L.ConvolutionND(self.n_dims, self.in_channels, self.hidden_channels, self.kernel_size,  stride=1, pad=pad, initialW=self.initialW, initial_bias=self.initial_bias)
-                self.conv_2=L.ConvolutionND(self.n_dims, self.hidden_channels, self.out_channels, self.kernel_size, stride=1, pad=pad, initialW=self.initialW, initial_bias=self.initial_bias)
+                self.conv_2=L.ConvolutionND(self.n_dims, self.hidden_channels, self.out_channel, self.kernel_size, stride=1, pad=pad, initialW=self.initialW, initial_bias=self.initial_bias)
             
             elif self.block_type == 'dilated':
                 assert self.n_dims != 2, 'Currently, dilated convolution is unsupported in 3D.'
                 self.conv_1=L.DilatedConvolution2D(self.in_channels, self.hidden_channels, self.kernel_size,  stride=1, pad=pad, dilate=1, initialW=self.initialW, initial_bias=self.initial_bias)
-                self.conv_2=L.DilatedConvolution2D(self.hidden_channels, self.out_channels, self.kernel_size, stride=1, pad=pad*2, dilate=2, initialW=self.initialW, initial_bias=self.initial_bias)
+                self.conv_2=L.DilatedConvolution2D(self.hidden_channels, self.out_channel, self.kernel_size, stride=1, pad=pad*2, dilate=2, initialW=self.initialW, initial_bias=self.initial_bias)
             
             elif self.block_type == 'mlp':
                 assert self.n_dims != 2, 'Currently, mlp convolution is unsupported in 3D.'
                 self.conv_1=L.MLPConvolution2D(self.in_channels, [self.hidden_channels]*3, self.kernel_size,  stride=1, pad=pad, conv_init=self.initialW, bias_init=self.initial_bias)
-                self.conv_2=L.MLPConvolution2D(self.hidden_channels, [self.out_channels]*3, self.kernel_size, stride=1, pad=pad, conv_init=self.initialW, bias_init=self.initial_bias)
+                self.conv_2=L.MLPConvolution2D(self.hidden_channels, [self.out_channel]*3, self.kernel_size, stride=1, pad=pad, conv_init=self.initialW, bias_init=self.initial_bias)
     
             if self.batch_norm:               
                 self.bn_conv_1=L.BatchNormalization(self.hidden_channels)
-                self.bn_conv_2=L.BatchNormalization(self.out_channels)
+                self.bn_conv_2=L.BatchNormalization(self.out_channel)
 
 
     def __call__(self, x):
@@ -100,9 +100,7 @@ class UNet(chainer.Chain):
                  n_layers=5, 
                  n_filters=64, 
                  class_weight=[None], 
-                 loss_function=['softmax_cross_entropy'],
                  label_types=['categorical'],
-                 loss_weight=[1.],
                  is_bayesian=False, 
                  is_residual=False,
                  initialW=initializers.HeNormal(), 
@@ -118,70 +116,63 @@ class UNet(chainer.Chain):
         self.in_channel = in_channel
         self.out_channel = out_channel
         self.n_layers = n_layers
-        self.n_filters = n_filters       
+        self.n_filters = n_filters
         self.kernel_size = kernel_size
         self.is_bayesian = is_bayesian
         self.is_residual = is_residual
         
         self.class_weight = class_weight
-        if self.n_labels != len(class_weight) or not isinstance(class_weight, list):
-            raise ValueError('n_labels != len(class_weight). Actual: {} != {}'.format(self.n_labels, len(class_weight))) 
-
-        self.loss_function = loss_function
-        if self.n_labels != len(loss_function) or not isinstance(loss_function, list):
-            raise ValueError('n_labels != len(loss_function). Actual: {} != {}'.format(self.n_labels, len(loss_function))) 
+        if self.out_channel != len(class_weight) or not isinstance(class_weight, list):
+            raise ValueError('out_channel != len(class_weight). Actual: {} != {}'.format(self.out_channel, len(class_weight))) 
 
         self.label_types = label_types
-        if self.n_labels != len(label_types) or not isinstance(label_types, list):
-            raise ValueError('n_labels != len(label_types). Actual: {} != {}'.format(self.n_labels, len(label_types)))     
-
-        self.loss_weight = loss_weight      
-        if self.n_labels != len(loss_weight) or not isinstance(loss_weight, list):
-            raise ValueError('n_labels != len(loss_weight). Actual: {} != {}'.format(self.n_labels, len(loss_weight)))      
+        if self.out_channel != len(label_types) or not isinstance(label_types, list):
+            raise ValueError('out_channel != len(label_types). Actual: {} != {}'.format(self.out_channel, len(label_types)))     
 
         self.initialW = initialW
         self.initial_bias = initial_bias
         self.block_type = block_type
         self.batch_norm = batch_norm
         
-        chainer.Chain.__init__()
+        chainer.Chain.__init__(self)
                 
-        # down convolution
-        for i in range(1, self.n_layers+1):
-            if i == 1:
-                setattr(self, 'down_unet_block_%d' % i, UNetBlock(self.n_dims, sum(self.in_channel), self.n_filters*(2**(i-1)), self.n_filters*(2**(i-1)), self.kernel_size, initialW=initialW, initial_bias=initial_bias, is_residual=self.is_residual, block_type=block_type, batch_norm=batch_norm))
-            else:
-                setattr(self, 'down_unet_block_%d' % i, UNetBlock(self.n_dims, self.n_filters*(2**(i-2)), self.n_filters*(2**(i-1)), self.n_filters*(2**(i-1)), self.kernel_size, initialW=initialW, initial_bias=initial_bias, is_residual=self.is_residual, block_type=block_type, batch_norm=batch_norm))
+        with self.init_scope():
+            # down convolution
+            for i in range(1, self.n_layers+1):
+                if i == 1:
+                    setattr(self, 'down_unet_block_%d' % i, UNetBlock(self.n_dims, self.in_channel, self.n_filters*(2**(i-1)), self.n_filters*(2**(i-1)), self.kernel_size, initialW=initialW, initial_bias=initial_bias, is_residual=self.is_residual, block_type=block_type, batch_norm=batch_norm))
+                else:
+                    setattr(self, 'down_unet_block_%d' % i, UNetBlock(self.n_dims, self.n_filters*(2**(i-2)), self.n_filters*(2**(i-1)), self.n_filters*(2**(i-1)), self.kernel_size, initialW=initialW, initial_bias=initial_bias, is_residual=self.is_residual, block_type=block_type, batch_norm=batch_norm))
+        
+            # up convolution
+            for i in range(1, self.n_layers):
+                deconv_n_filters = self['down_unet_block_%d' % (i+1)].out_channel
+                setattr(self, 'deconv_%d' % i, L.DeconvolutionND(self.n_dims, deconv_n_filters, deconv_n_filters, self.kernel_size, stride=2, pad=0, initialW=initialW, initial_bias=initial_bias))
     
-        # up convolution
-        for i in range(1, self.n_layers):
-            deconv_n_filters = self['down_unet_block_%d' % (i+1)].out_channels
-            setattr(self, 'deconv_%d' % i, L.DeconvolutionND(self.n_dims, deconv_n_filters, deconv_n_filters, self.kernel_size, stride=2, pad=0, initialW=initialW, initial_bias=initial_bias))
-
-            if self.batch_norm:
-                setattr(self, 'bn_deconv_%d' % i, L.BatchNormalization(deconv_n_filters))
-
-            upconv_n_filters = self['down_unet_block_%d' % i].out_channels + self['deconv_%d' % i].W.shape[1]               
-            setattr(self, 'up_unet_block_%d' % i, UNetBlock(self.n_dims, upconv_n_filters, self.n_filters*(2**(i-1)), self.n_filters*(2**(i-1)), self.kernel_size, initialW=initialW, initial_bias=initial_bias, is_residual=self.is_residual, block_type=block_type, batch_norm=batch_norm))
-            
-            if i == 1: # output layer
-                setattr(self, 'up_conv%d_3_%d' % (i, j), L.ConvolutionND(self.n_dims, self.n_filters*(2**(i-1)), self.out_channel, ksize=self.kernel_size, stride=1, pad=1, initialW=initialW, initial_bias=initial_bias))    
-
+                if self.batch_norm:
+                    setattr(self, 'bn_deconv_%d' % i, L.BatchNormalization(deconv_n_filters))
     
-        # initialize weights for deconv layer
-        for i in range(1, self.n_layers):        
-            deconv_k_size    = self['deconv_%d' % i].W.shape[-1]
-            deconv_n_filters = self['deconv_%d' % i].W.shape[1] 
-
-            self['deconv_%d' % i].W.data[...] = 0
-
-            if self.n_dims == 2:          
-                filt = utils.get_upsampling_filter_2d(deconv_k_size)               
-                self['deconv_%d' % i].W.data[range(deconv_n_filters), range(deconv_n_filters), :, :] = filt     
-            elif self.n_dims == 3:
-                filt = utils.get_upsampling_filter_3d(deconv_k_size)
-                self['deconv_%d' % i].W.data[range(deconv_n_filters), range(deconv_n_filters), :, :, :] = filt                    
-
+                upconv_n_filters = self['down_unet_block_%d' % i].out_channel + self['deconv_%d' % i].W.shape[1]               
+                setattr(self, 'up_unet_block_%d' % i, UNetBlock(self.n_dims, upconv_n_filters, self.n_filters*(2**(i-1)), self.n_filters*(2**(i-1)), self.kernel_size, initialW=initialW, initial_bias=initial_bias, is_residual=self.is_residual, block_type=block_type, batch_norm=batch_norm))
+                
+                if i == 1: # output layer
+                    setattr(self, 'up_conv%d_3' % i, L.ConvolutionND(self.n_dims, self.n_filters*(2**(i-1)), self.out_channel, ksize=self.kernel_size, stride=1, pad=1, initialW=initialW, initial_bias=initial_bias))    
+    
+        
+            # initialize weights for deconv layer
+            for i in range(1, self.n_layers):
+                deconv_k_size    = self['deconv_%d' % i].W.shape[-1]
+                deconv_n_filters = self['deconv_%d' % i].W.shape[1] 
+    
+                self['deconv_%d' % i].W.data[...] = 0
+    
+                if self.n_dims == 2:          
+                    filt = get_upsampling_filter_2d(deconv_k_size)               
+                    self['deconv_%d' % i].W.data[range(deconv_n_filters), range(deconv_n_filters), :, :] = filt     
+                elif self.n_dims == 3:
+                    filt = get_upsampling_filter_3d(deconv_k_size)
+                    self['deconv_%d' % i].W.data[range(deconv_n_filters), range(deconv_n_filters), :, :, :] = filt                    
+    
 
         self.train = False
 
@@ -191,7 +182,6 @@ class UNet(chainer.Chain):
 
     def up_conv_activate_function(self, x):
         return F.relu(x)
-
 
     def down_conv_dropout(self, x):
         if self.is_bayesian:
@@ -216,8 +206,6 @@ class UNet(chainer.Chain):
     def __call__(self, x):
         
         store_activations = {}
-        
-        x = F.concat(x, axis=1) 
         
         # down convolution
         for i in range(1, self.n_layers+1):
@@ -259,17 +247,14 @@ class UNet(chainer.Chain):
             h = self.up_conv_dropout(h)
                 
             if i == 1:
-                scores = []
-                for j in range(self.n_labels):
-                    o = self['up_conv%d_3_%d' % (i, j)](h)
-                    if self.n_dims == 2:
-                        score = o[:,:,0:x.shape[2],0:x.shape[3]] 
-                    elif self.n_dims == 3:
-                        score = o[:,:,0:x.shape[2],0:x.shape[3],0:x.shape[4]] 
-                    scores.append(score)       
+                o = self['up_conv%d_3' % i](h)
+                if self.n_dims == 2:
+                    score = o[:,:,0:x.shape[2],0:x.shape[3]] 
+                elif self.n_dims == 3:
+                    score = o[:,:,0:x.shape[2],0:x.shape[3],0:x.shape[4]] 
 
-                self.scores = scores
+                self.score = score
                 
         del h, o # clear hidden layer
 
-        return self.scores
+        return self.score
