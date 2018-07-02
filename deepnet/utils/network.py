@@ -27,6 +27,9 @@ class NetworkNode:
     def __call__(self, *args, **kwargs):
         return self.model(*args, **kwargs)
 
+    def __repr__(self):
+        return str(dict(input=self.input, output=self.output))
+
     def update(self):
         if not self.updatable:
             return
@@ -93,7 +96,8 @@ class NetworkManager:
         }
         
     def add(self, node_name, node):
-        assert node_name not in self.network
+        assert node_name not in self.network,\
+            'Duplicating label name: {}({})<{}>'.format(node_name, node, str({ key: str(node) for key, node in self.network.items() }))
         self.network[node_name] = node
         if node.updatable:
             self.updatable_node.append(node)
