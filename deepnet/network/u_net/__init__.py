@@ -174,7 +174,7 @@ class UNet(chainer.Chain):
                     self['deconv_%d' % i].W.data[range(deconv_n_filters), range(deconv_n_filters), :, :, :] = filt                    
     
 
-        self.train = False
+        #self.train = False
 
 
     def down_conv_activate_function(self, x):

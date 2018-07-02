@@ -6,7 +6,7 @@ import test
 import enum
 
 class NetworkNode:
-    def __init__(self, input, output, model, training=True, validation=True, test=True, updatable = False, **args):
+    def __init__(self, input, output, model, training=True, validation=True, test=True, updatable = False, args=dict()):
         input_ = input
         self.input = input_ if isinstance(input_, list) else [ input_ ] 
         self.output = output if isinstance(output, list) else [ output ] 
@@ -129,11 +129,16 @@ class NetworkManager:
             for dep_node in self.walker.node_dependency[name]:
                 dep_node.ready(name)
 
+        
+
     def update(self):
         for node in self.updatable_node:
             node.update()
 
     def __call__(self, mode='train', **inputs):
+        assert all((name in inputs for name in self.input_list)), \
+            'Input requirement is not satisfied. (Inputs: {}, Input requirement: {}])'.format(list(inputs.keys()), self.input_list)
+        
         self.variables = {}
         self.variables.update(inputs)
         self.walker = NetworkWalker(self.network, self.input_list)
@@ -148,4 +153,5 @@ class NetworkManager:
                 continue
             for node in self.walker.node_dependency[name]:
                 node.ready(name)
-    
+
+            
