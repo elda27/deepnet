@@ -55,7 +55,7 @@ def main():
     os.makedirs(param_dir, exist_ok=True)
 
     # load network configuration
-    network_config = toml.load(args.network_config)
+    network_config = deepnet.config.load(args.network_config, is_variable_expansion=False)
     network_config = update_log_dir(network_config, log_dirs) # Update log directory
     network_config['hyper_parameter'] = parse_hyper_parameter(args.hyper_param, network_config['hyper_parameter'])
     network_config = deepnet.config.expand_variable(network_config)

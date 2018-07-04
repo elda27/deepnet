@@ -1,12 +1,13 @@
 import toml
 import re
+import os.path
 
-def load(filename):
+def load(filename, **kwargs):
     with open(filename, 'r') as fp:
-        return loads(fp.read())
+        return loads(fp.read(), root_dir=os.path.dirname(filename), **kwargs)
 
-def loads(s):
-    parser = ConfigParser(s)
+def loads(s, **kwargs):
+    parser = ConfigParser(s, **kwargs)
     return parser.config
 
 def expand_variable(config):
@@ -15,15 +16,42 @@ def expand_variable(config):
     parser.expand()
     return parser.config
 
+def find_include_file(filename, root_dir = None):
+    if root_dir is not None and os.path.exists(os.path.join(root_dir, filename)):
+        return os.path.join(root_dir, filename)
+    elif os.path.exists(filename):
+        return filename
+    else:
+        raise AttributeError('Including file is not found: ' + filename)
+
+
+def expand_include(config, root_dir = None):
+    if 'include' not in config['config']:
+        return config
+    includes = config['config']['include']
+    if not isinstance(includes, list):
+        includes = [ includes ]
+
+    included_config = {}
+    for include in includes:
+        included_config.update(ConfigParser(find_include_file(include, root_dir), is_expand_variable=False).config)
+    
+    included_config.update(config)
+    return included_config
+
 class ConfigParser:
-    def __init__(self, config_string):
+    def __init__(self, config_string, is_variable_expansion = True, root_dir=None):
         self.variable_pattern = re.compile(r'\$\{?(?P<variable>[\w\d_\.]+)\}?')
         if config_string is None:
             self.config = None
             return
 
         self.config = toml.loads(config_string)
-        self.expand()
+        
+        self.config = expand_include(self.config, root_dir)
+        if is_variable_expansion:
+            self.expand()
+        
 
     def expand(self):
         for key, value in self.config.items():
