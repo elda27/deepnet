@@ -8,7 +8,7 @@ try:
 except ImportError:
     NO_CUPY = True
     pass
-from functools import reduce
+import functools
 from itertools import cycle
 
 from deepnet import utils
@@ -218,6 +218,27 @@ def to_gpu(*input_list):
         output_list.append(input_)
     return output_list
 
+__operation_list = {
+    '+': lambda x, y: x + y,
+    '-': lambda x, y: x - y,
+    '*': lambda x, y: x * y,
+    '/': lambda x, y: x / y,
+}
+
+@register_process()
+def reduce(*input, operation='+', weights=None):
+    if weights is None:
+        weights = [ 1.0 for _ in range(len(input)) ]
+
+    operation = __operation_list[operation]
+    input_iter = iter(zip(input, w))
+
+    x0, w0 = next(input_iter)
+    y = x0 * y0
+    for x, w in input_iter:
+        y = operation(x * w, y)
+
+    return y
 
 @register_process('loss.constrain_kernel')
 def constrain_kernel(network):
@@ -235,7 +256,7 @@ def constrain_kernel(network):
 
 @register_process('loss.euclidean_distance')
 def euclidean_distance(x, t):
-    linear_shape = (x.shape[0], reduce(lambda x,y: x * y, x.shape[1:]))
+    linear_shape = (x.shape[0], functools.reduce(lambda x,y: x * y, x.shape[1:]))
     return F.mean(F.batch_l2_norm_squared(F.reshape(x - t, linear_shape)))
 
 @register_process('loss.total_softmax_cross_entropy')
