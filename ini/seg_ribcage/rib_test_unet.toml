@@ -5,11 +5,14 @@ input = [
 ]
 
 logging = [
-  '__train_iteration__', 'train.loss_xentropy', 'valid.loss_xentropy'
+  '__train_iteration__', 
+  'train.loss_sigmoid', 'valid.loss_sigmoid'
+  'train.loss_softmax', 'valid.loss_softmax'
+  'train.loss_unet', 'valid.loss_unet'
 ]
 
 archive_nodes = ['Predictor']
-optimizing_loss = ['loss_xentropy']
+optimizing_loss = ['loss_unet']
 
 [hyper_parameter]
 n_input_channel = 1
@@ -19,7 +22,7 @@ threshold = 0.015
 [[process]]
 label  = "Predictor"
 type   = "network.U-net"
-update = "loss_xentropy"
+update = "loss_unet"
 
 in_channel = "${hyper_parameter.n_input_channel}"
 out_channel = "${hyper_parameter.n_class}"
