@@ -6,8 +6,8 @@ input = [
 
 logging = [
   '__train_iteration__', 
-  'train.loss_sigmoid', 'valid.loss_sigmoid'
-  'train.loss_softmax', 'valid.loss_softmax'
+  'train.loss_sigmoid', 'valid.loss_sigmoid',
+  'train.loss_softmax', 'valid.loss_softmax',
   'train.loss_unet', 'valid.loss_unet'
 ]
 
