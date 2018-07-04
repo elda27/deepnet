@@ -195,7 +195,8 @@ class TileImageVisualizer(Visualizer):
                     block_images_list.append([])
 
         for block in batch_block_images:
-            block = np.transpose(block, (0, 3, 2, 1))
+            assert block.ndim == 4, 'batch image must be 4 dimensional array (Actual: {}[Shape:{}])'.format(block.ndim, block.shape)
+            block = np.transpose(block, (0, 2, 3, 1))
             for j in range(block.shape[0]):
                 block_images_list[j].append((self.normalize(block[j]) * 255).astype(np.uint8))
 
