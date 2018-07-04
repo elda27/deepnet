@@ -4,6 +4,7 @@ import concurrent.futures
 import contextlib 
 import test
 import enum
+from collections import OrderedDict
 
 class NetworkNode:
     def __init__(self, input, output, model, training=True, validation=True, test=True, updatable = False, args=dict()):
@@ -129,7 +130,21 @@ class NetworkManager:
             for dep_node in self.walker.node_dependency[name]:
                 dep_node.ready(name)
 
-        
+    def validate_network(self, not_reached):
+        not_reached_node = None
+        # Search not found node.
+        for node in self.network.values(): 
+            if not_reached in node.output:
+                not_reached_node = node
+                break
+
+        found_nodes = []
+
+        for name, is_ready in not_reached_node.is_already_.items():
+            if not is_ready:
+                found_nodes.extend(self.validate_network(name))
+
+        return found_nodes
 
     def update(self):
         for node in self.updatable_node:

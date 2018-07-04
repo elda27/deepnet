@@ -46,16 +46,16 @@ output=["gpu_image_tmp", "gpu_label", "gpu_body_bone_label_tmp"]
 # (N is batch size and will automatically concatenate on to_gpu)
 [[network]]
 input=  "gpu_image_tmp"
-output= "gpu_image"
 process="chainer.expand_dims"
+output= "gpu_image"
 axis=1
 
 # Input image and predicted label are same shape due to sigmoid cross entropy.
 # If you want to use softmax cross entropy, remove this section.
 [[network]]
 input  ="gpu_body_bone_label_tmp"
-output ="gpu_body_bone_label"
 process="chainer.expand_dims"
+output ="gpu_body_bone_label"
 axis=1
 
 # Mask input image by body bone label

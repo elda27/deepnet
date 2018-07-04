@@ -61,6 +61,10 @@ class Trainer:
 
                 # Back propagation and update network 
                 for loss_name, optimizer in self.optimizer.items():
+                    if loss_name not in variables:
+                        unreached = self.network.validate_network(loss_name)
+                        raise ValueError('Unreached loss computation.\nFollowing list is not reached nodes: ' + str(unreached))
+
                     loss = variables[loss_name]
                     if i == 0:
                         self.write_network_architecture(os.path.join(self.archive_dir, 'model_{}.dot'.format(loss_name)), loss)
