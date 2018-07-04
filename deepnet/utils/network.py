@@ -138,10 +138,14 @@ class NetworkManager:
                 not_reached_node = node
                 break
 
+        if not_reached_node is None:
+            return []
+
         found_nodes = []
 
         for name, is_ready in not_reached_node.is_already_.items():
             if not is_ready:
+                found_nodes.append(name)
                 found_nodes.extend(self.validate_network(name))
 
         return found_nodes
