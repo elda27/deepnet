@@ -1,0 +1,66 @@
+
+[config]
+exp_name = "rib_segmentation"
+case_names = [
+  "CXDI40C_01",
+  "CXDI40C_03",
+  "CXDI40C_05",
+  "CXDI40C_06",
+  "CXDI40C_07",
+  "CXDI40C_08",
+  "CXDI40C_09",
+  "CXDI40C_10",
+  "KU025_SE000002",
+  "KU032_SE000001",
+  "KU033_SE000003",
+  "KU034_SE000001",
+  "KU040_SE000002",
+  "KU041_SE000002",
+  "KU042_SE000001",
+  "KU055_SE000001",
+  "KU065_SE000001",
+  "KU066_SE000001",
+  "KU069_SE000002",
+  "KU073_SE000002",
+  "FLIP_CXDI40C_01",
+  "FLIP_CXDI40C_03",
+  "FLIP_CXDI40C_05",
+  "FLIP_CXDI40C_06",
+  "FLIP_CXDI40C_07",
+  "FLIP_CXDI40C_08",
+  "FLIP_CXDI40C_09",
+  "FLIP_CXDI40C_10",
+  "FLIP_KU025_SE000002",
+  "FLIP_KU032_SE000001",
+  "FLIP_KU033_SE000003",
+  "FLIP_KU034_SE000001",
+  "FLIP_KU040_SE000002",
+  "FLIP_KU041_SE000002",
+  "FLIP_KU042_SE000001",
+  "FLIP_KU055_SE000001",
+  "FLIP_KU065_SE000001",
+  "FLIP_KU066_SE000001",
+  "FLIP_KU069_SE000002",
+  "FLIP_KU073_SE000002",
+]
+root_dir = 'F:\dataset\2018-05v2\DRR'
+
+# Input declaration
+[[input]]
+label = ["image", "spacing"]
+type = "image"
+paths = [
+  "${config.root_dir}/<case_names>/*_image.mhd"
+]
+[[input]]
+label = ["body_bone_image", "body_bone_image_spacing"]
+type = "image"
+paths = [
+  "${config.root_dir}/<case_names>/*_image_body_bone.mhd"
+]
+[[input]]
+label = ["label", "label_spacing"]
+type = "image"
+paths = [
+  "${config.root_dir}/<case_names>/*_label.mhd"
+]
