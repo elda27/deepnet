@@ -63,7 +63,10 @@ class Trainer:
                 for loss_name, optimizer in self.optimizer.items():
                     if loss_name not in variables:
                         unreached = self.network.validate_network(loss_name)
-                        raise ValueError('Unreached loss computation.\nFollowing list is not reached nodes: ' + str(unreached))
+                        raise ValueError(
+                            'Unreached loss computation.\nFollowing list is not reached nodes: \n' + 
+                            '\n'.join([ str(n) for n in  unreached ])
+                            )
 
                     loss = variables[loss_name]
                     if i == 0:
