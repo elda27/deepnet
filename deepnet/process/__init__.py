@@ -15,8 +15,9 @@ from deepnet import utils
 
 _registed_process = {
     'chainer.sigmoid': F.sigmoid,
+    'chainer.softmax': F.softmax,
     'chainer.transpose': F.transpose,
-    'chainer.expand_dims', F.expand_dims,
+    'chainer.expand_dims': F.expand_dims,
     'chainer.sigmoid_cross_entropy': F.sigmoid_cross_entropy,
     'chainer.softmax_cross_entropy': F.softmax_cross_entropy,
     'chainer.batch_l2_norm_squared': F.batch_l2_norm_squared,
@@ -82,10 +83,12 @@ def make_overlap_label(*images):
     for image in images:
         img = utils.unwrapped(image)
         batch_image = []
-        for i in range(img.shape[0]):
-            index_img = np.argmax(np.concatenate((np.ones((1,) + img[i].shape[1:], dtype=img.dtype) * 1e-1, img[i]), axis=0), axis=0)
-            batch_image.append(np.expand_dims(map_index_label(index_img.T), axis=0))
-        result_image.append(np.concatenate(batch_image, axis=0))
+        
+        index_img = np.argmax(
+            np.concatenate((np.ones( (img.shape[0], 1) + img.shape[2:], dtype=img.dtype) * 1e-1, img), axis=1), 
+            axis=1
+            )
+        result_image.append(map_index_label(index_img))
     return result_image
 
 colors = [
@@ -112,7 +115,39 @@ colors = [
 
 @register_process()
 def map_index_label(img, colors=colors):
-    assert img.ndim == 2, 'Actual: {}'.format(img.ndim)
+    """Mapping color to index image
+    
+    Args:
+        img (images): Input images aligned by (N, 1, S, ...) or (N, S, ...) (N means N sample so it is same as batch size, 
+                      S mean shape of image).
+        colors (list, optional): color of input images, Defaults to colors.
+    
+    Returns:
+        numpy.ndarray: color images (N, 3, S), S is same as input image.
+    """
+
+    if img.ndim == 2:
+        return map_index_label_2d(img)
+    
+    img = np.squeeze(utils.unwrapped(img))
+
+    uniques = list(np.unique(img))
+    if 0 in uniques:
+        uniques.remove(0)
+
+    result = np.zeros((3, ) + img.shape, dtype=np.uint8)
+    for uid, color in zip(uniques, cycle(colors)):
+        mask = (img == uid)
+        result[0, mask] = color[0]
+        result[1, mask] = color[1]
+        result[2, mask] = color[2]
+    
+    return np.transpose(result, (1, 0, 2, 3))
+
+@register_process
+def map_index_label_2d(img, colors=colors):
+    assert img.ndim == 2, 'Actual: {} (Shape: {})'.format(img.ndim, img.shape)
+
     uniques = list(np.unique(img))
     if 0 in uniques:
         uniques.remove(0)
