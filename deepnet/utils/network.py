@@ -131,12 +131,16 @@ class NetworkManager:
                 dep_node.ready(name)
 
     def validate_network(self, not_reached):
-        not_reached_node = None
         # Search not found node.
-        for node in self.network.values(): 
-            if not_reached in node.output:
-                not_reached_node = node
-                break
+        def search_node(name):
+            found_node = None
+            for node in self.network.values(): 
+                if name in node.output:
+                    found_node = node
+                    break
+            return found_node
+
+        not_reached_node = search_node(not_reached)
 
         if not_reached_node is None:
             return []
@@ -145,7 +149,7 @@ class NetworkManager:
 
         for name, is_ready in not_reached_node.is_already_.items():
             if not is_ready:
-                found_nodes.append(name)
+                found_nodes.append(search_node(name))
                 found_nodes.extend(self.validate_network(name))
 
         return found_nodes
