@@ -59,6 +59,7 @@ class Trainer:
                 
                 # Update variables.
                 variables.update(self.network.variables)
+                self.network.variables.clear()
 
                 # Back propagation and update network 
                 for loss_name, optimizer in self.optimizer.items():
@@ -87,6 +88,8 @@ class Trainer:
                 if i % self.n_valid_step == 0:
                     valid_variables = self.validate(variables=variables)
                     variables.update({ 'valid.' + name: value for name, value in valid_variables.items() })
+                    self.network.variables.clear()
+                    del valid_variables
 
                 # Write log
                 for logger in self.logger:
