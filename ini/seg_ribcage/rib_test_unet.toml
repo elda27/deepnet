@@ -58,9 +58,15 @@ process="chainer.expand_dims"
 output ="gpu_body_bone_label"
 axis=1
 
+[[network]]
+input  ="gpu_body_bone_label"
+process="cast_type"
+dtype='float32'
+output ="gpu_body_bone_label_float"
+
 # Mask input image by body bone label
 [[network]]
-input  = ["gpu_image", "gpu_body_bone_label"]
+input  = ["gpu_image", "gpu_body_bone_label_float"]
 process= "reduce"
 operation = "*"
 output = "gpu_masked_image"
