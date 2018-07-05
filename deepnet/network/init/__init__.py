@@ -101,6 +101,10 @@ def build_networks(config):
         updatable = False
         process_name = network_conf.pop('process')
         if process_name in _created_process: # If process is exist.
+            # :TODO: The updatable parameter use for optimization of the network.
+            #        But this implementation need after implementation of optimization configuration
+            #        on the config field. (Maybe the implmentation of staging optimization too)
+
             registed_proc = _created_process[process_name] # registed_proc contains 'proc' and 'proerty', and so on.
             proc = registed_proc['proc']
             updatable = 'update' in registed_proc['property']
