@@ -7,6 +7,7 @@ from . import visualizer
 import glob
 import os
 import os.path
+import warnings
 
 import chainer
 import numpy
@@ -55,3 +56,13 @@ def get_log_dir(log_root_dir, log_index):
     log_glob = list(glob.glob(os.path.join(log_root_dir, str(log_index) + '-*')))
     assert len(log_glob) == 1
     return log_glob[0]
+
+def deprecated():
+    def _deprecated(func):
+        warnings.warn(
+            'Invoked function {} is deprecated.'.format(func.__name__),
+            category=DeprecationWarning,
+            stacklevel=2
+        )
+        return func
+    return _deprecated
