@@ -33,10 +33,19 @@ def expand_include(config, root_dir = None):
         includes = [ includes ]
 
     included_config = {}
-    for include in includes:
-        included_config.update(ConfigParser(find_include_file(include, root_dir), is_expand_variable=False).config)
+
+    load_configs = [ ConfigParser(find_include_file(include, root_dir), is_expand_variable=False).config for include in includes ]
     
-    included_config.update(config)
+    load_configs.append(config)
+    for including_config in load_configs
+        for key in including_config:
+            if isinstance(including_config[key], list):
+                included_config.setdefault(key, []).extend(including_config[key])
+            elif isinstance(including_config[key], dict):
+                included_config.setdefault(key, {}).extend(including_config[key])
+            else:
+                included_config[key] = including_config[key]
+
     return included_config
 
 class ConfigParser:
