@@ -9,6 +9,7 @@ import copy
 from deepnet import utils
 import os.path
 import subprocess
+import gc
 
 class Trainer:
     def __init__(self, network, train_iter, valid_iter, visualizers, train_config, optimizer, logger, archive_dir, archive_nodes):
@@ -82,6 +83,7 @@ class Trainer:
                 variables.update({ 'train.' + name: utils.unwrapped(value) for name, value in self.network.variables.items() })
 
                 # validation if current iteraiton is multiplier as n_valid_step
+                valid_keys = []
                 if i % self.n_valid_step == 0:
                     valid_variables = self.validate(variables=variables)
                     variables.update({ 'valid.' + name: value for name, value in valid_variables.items() })
@@ -95,6 +97,10 @@ class Trainer:
                 pbar.update()
                 if self.n_max_train_iter <= i:
                     break
+
+                # Refresh variables
+                variables.clear()
+                gc.collect()
 
                 
     def validate(self, variables):
