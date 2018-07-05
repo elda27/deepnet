@@ -62,7 +62,7 @@ axis=1
 [[network]]
 input  = ["gpu_image", "gpu_body_bone_label"]
 process= "reduce"
-operator = "*"
+operation = "*"
 output = "gpu_masked_image"
 
 # Predict label by unet
