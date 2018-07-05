@@ -113,6 +113,9 @@ colors = [
     (99, 125, 138),  # Blue Gray
 ]
 
+def get_default_color():
+    return colors
+
 @register_process()
 def map_index_label(img, colors=colors):
     """Mapping color to index image

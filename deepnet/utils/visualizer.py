@@ -21,7 +21,7 @@ import os
 import os.path
 
 from deepnet.utils import mhd
-from deepnet import utils
+from deepnet import utils, process
 
 _registed_visualizers = {}
 
@@ -119,12 +119,20 @@ class ImageWriter(Visualizer):
                         spacing = tuple(spacing) + (1,) * (image.ndim - len(spacing))
 
                 save_image(self.output_filename.format(**self.variables, __index__=i, __name__=name), image, spacing)
+        self.images.clear()
 
     def get_figure(self):
         return self.images
 
+#@utils.deprecated()
 @register_visualizer('mhd_write')
 class MhdImageWriter(Visualizer):
+    """Mhd image Writer
+        
+    Note:
+        This class is deprecated so you can use ImageWriter
+    """
+
     def __init__(self, output_filename, num_images, image_names):
         self.num_images = num_images
         self.image_names = image_names
@@ -252,12 +260,12 @@ class TileImageVisualizer(Visualizer):
 
 @register_visualizer('nch_visualizer')
 class NchImageVisualizer(TileImageVisualizer):
-    def __init__(self, output_filename, num_rows, n_ch, n_ch_images, overlap_images, color_pallete, threshold=0.1, subtract=None):
+    def __init__(self, output_filename, num_rows, n_ch, n_ch_images, overlap_images, color_pallete = None, threshold=0.1, subtract=None):
         self.num_rows = num_rows
         self.n_ch = n_ch
         self.n_ch_images = n_ch_images if isinstance(n_ch_images, list) else [ n_ch_images ]
         self.overlap_images = overlap_images if isinstance(overlap_images, list) else [ overlap_images ]
-        self.color_pallete = color_pallete
+        self.color_pallete = color_pallete if color_pallete is not None else process.get_default_color()
         self.subtract_images = subtract
 
         self.representation_vars = []
@@ -295,7 +303,6 @@ class NchImageVisualizer(TileImageVisualizer):
             if isinstance(images, list):
                 images = chainer.functions.concat([ F.expand_dims(img, axis=0) for img in images ], axis=0)
             
-            images = F.transpose(images, (0, 1, 3, 2))
             processed_image[n_ch_image] = images
             for i, color in zip(range(self.n_ch), cycle(self.color_pallete)):
                 index = 'NchImageVisualizer.{}.__{}_ch_images'.format(n_ch_image, i)
