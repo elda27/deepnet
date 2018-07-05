@@ -16,7 +16,7 @@ optimizing_loss = ['loss_unet']
 
 [hyper_parameter]
 n_input_channel = 1
-n_class = 1
+n_class = 14
 threshold = 0.015
 
 [[process]]
@@ -58,9 +58,15 @@ process="chainer.expand_dims"
 output ="gpu_body_bone_label"
 axis=1
 
+[[network]]
+input  ="gpu_body_bone_label"
+process="cast_type"
+dtype='float32'
+output ="gpu_body_bone_label_float"
+
 # Mask input image by body bone label
 [[network]]
-input  = ["gpu_image", "gpu_body_bone_label"]
+input  = ["gpu_image", "gpu_body_bone_label_float"]
 process= "reduce"
 operation = "*"
 output = "gpu_masked_image"
@@ -74,7 +80,13 @@ output="gpu_raw_pred_label"
 
 ## Losses
 [[network]]
-input=[ "gpu_raw_pred_label", "gpu_label" ]
+input  ="gpu_label"
+process="cast_type"
+dtype='int32'
+output ="i_gpu_label"
+
+[[network]]
+input=[ "gpu_raw_pred_label", "i_gpu_label" ]
 process="chainer.sigmoid_cross_entropy"
 output="loss_sigmoid"
 normalize=false
