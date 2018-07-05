@@ -114,16 +114,9 @@ test = false
 
 ## Index to Color label
 [[network]]
-input   = "gpu_label"
-process = "map_index_label"
-output  = "gpu_color_label"
-train=false
-test=false
-
-[[network]]
-input   = "gpu_pred_label"
+input   = [ "gpu_label", "gpu_pred_label" ]
 process = "make_overlap_label"
-output  = "gpu_color_pred_label"
+output  = [ "gpu_color_label", "gpu_color_pred_label"]
 train=false
 test=false
 
