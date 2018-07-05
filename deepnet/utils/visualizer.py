@@ -71,9 +71,8 @@ class Visualizer:
             image =  np.array(image)
         return image
 
-    @abstractmethod
     def clear(self):
-        raise NotImplementedError()
+        del self.variables
 
     @abstractmethod
     def render(self, variables):
