@@ -16,7 +16,7 @@ optimizing_loss = ['loss_unet']
 
 [hyper_parameter]
 n_input_channel = 1
-n_class = 1
+n_class = 14
 threshold = 0.015
 
 [[process]]
@@ -80,7 +80,13 @@ output="gpu_raw_pred_label"
 
 ## Losses
 [[network]]
-input=[ "gpu_raw_pred_label", "gpu_label" ]
+input  ="gpu_label"
+process="cast_type"
+dtype='int32'
+output ="i_gpu_label"
+
+[[network]]
+input=[ "gpu_raw_pred_label", "i_gpu_label" ]
 process="chainer.sigmoid_cross_entropy"
 output="loss_sigmoid"
 normalize=false
