@@ -117,7 +117,8 @@ def build_networks(config):
                 output=network_conf['output'],
                 ))
 
-        args = copy.deepcopy(network_conf)
+        #args = copy.deepcopy(network_conf)
+        args = network_conf
         try:
             del args['label'], args['input'], args['output'], args['process']
         except:
