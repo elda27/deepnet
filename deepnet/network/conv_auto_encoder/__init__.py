@@ -174,7 +174,7 @@ class ConvolutionalAutoEncoder(chainer.Chain):
     def __init__(self, 
         n_dim, in_out_channel, 
         encode_dim=64, n_layers=4, 
-        dropout='none', use_batch_norm=False,
+        dropout='none', use_batch_norm=True,
         use_skipping_connection='none', 
         vae_unit=None,
         **kwargs):
