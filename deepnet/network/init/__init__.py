@@ -99,9 +99,9 @@ def build_networks(config):
 
         proc = None
         updatable = False
-        process_name = network_conf['process']
+        process_name = network_conf.pop('process')
         if process_name in _created_process: # If process is exist.
-            registed_proc = _created_process[process_name]
+            registed_proc = _created_process[process_name] # registed_proc contains 'proc' and 'proerty', and so on.
             proc = registed_proc['proc']
             updatable = 'update' in registed_proc['property']
             _updatable_process.append(proc)
@@ -118,11 +118,6 @@ def build_networks(config):
                 ))
 
         #args = copy.deepcopy(network_conf)
-        args = network_conf
-        try:
-            del args['label'], args['input'], args['output'], args['process']
-        except:
-            pass
 
         network_manager.add(
             network_conf.pop('label'), 
@@ -134,7 +129,7 @@ def build_networks(config):
                 training=network_conf.pop('train', True),
                 validation=network_conf.pop('valid', True),
                 test=network_conf.pop('test', True),
-                args=args
+                args=network_conf
                 )
             )
     
