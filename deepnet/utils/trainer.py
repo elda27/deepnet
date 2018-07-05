@@ -153,6 +153,7 @@ class Trainer:
         # Save visualized results
         for visualizer in self.visualizers:
             visualizer.save()
+            visualizer.clear()
 
         return valid_variables
 
