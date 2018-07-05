@@ -130,9 +130,9 @@ def build_networks(config):
                 network_conf.pop('output'),
                 proc, 
                 updatable=updatable,
-                training=network_conf.pop('train', False),
-                validation=network_conf.pop('valid', False),
-                test=network_conf.pop('test', False),
+                training=network_conf.pop('train', True),
+                validation=network_conf.pop('valid', True),
+                test=network_conf.pop('test', True),
                 args=args
                 )
             )
