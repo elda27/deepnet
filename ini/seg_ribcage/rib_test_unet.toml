@@ -155,3 +155,10 @@ block_images =  [
   ]
 block_shape = [2, 3]
 
+[[visualize]]
+type = "nch_visualizer"
+output_filename = "${visualize_dir}/{__train_iteration__:08d}_nch_tile.png"
+num_rows = 5
+n_ch = "${hyper_parameter.n_class}"
+n_ch_images = ["gpu_label", "gpu_pred_label"]
+overlap_images = [ "gpu_blend_label", "gpu_blend_pred_label" ]
