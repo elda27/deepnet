@@ -98,8 +98,7 @@ class UNet(chainer.Chain):
                  n_dims=2, 
                  kernel_size=3, 
                  n_layers=5, 
-                 n_filters=64, 
-                 label_types=['categorical'],
+                 n_filters=64,
                  is_bayesian=False, 
                  is_residual=False,
                  initialW=initializers.HeNormal(), 
@@ -120,10 +119,6 @@ class UNet(chainer.Chain):
         self.is_bayesian = is_bayesian
         self.is_residual = is_residual
         
-        self.label_types = label_types
-        if self.out_channel != len(label_types) or not isinstance(label_types, list):
-            raise ValueError('out_channel != len(label_types). Actual: {} != {}'.format(self.out_channel, len(label_types)))     
-
         self.initialW = initialW
         self.initial_bias = initial_bias
         self.block_type = block_type
