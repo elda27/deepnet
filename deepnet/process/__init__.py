@@ -231,10 +231,10 @@ def reduce(*input, operation='+', weights=None):
         weights = [ 1.0 for _ in range(len(input)) ]
 
     operation = __operation_list[operation]
-    input_iter = iter(zip(input, w))
+    input_iter = iter(zip(input, weights))
 
     x0, w0 = next(input_iter)
-    y = x0 * y0
+    y = x0 * w0
     for x, w in input_iter:
         y = operation(x * w, y)
 
