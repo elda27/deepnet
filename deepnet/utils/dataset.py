@@ -116,16 +116,18 @@ class RangeArray:
                 return value
         raise IndexError('list idnex out of range')
 
-    def __getitem__(self, index):        
+    def __getitem__(self, index):
         if isinstance(index, slice):
             values =[]
             for i in range(*index.indices()):
                 values.append(self.get(i))
             return tuple(values)
         elif isinstance(index, int):
-            return self.get(values)
+            return self.get(index)
+        elif np.issubdtype(index, np.integer):
+            return self.get(index)
         else:
-            raise TypeError
+            raise TypeError('Unsupported index type. Actual type:{}, Value: {}'.format(type(index), index) )
 
     def __len__(self):
         return self.length
@@ -179,13 +181,15 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
                     paths = paths[int(len(paths) * start_ratio) : int(len(paths) * GeneralDataset.used_indices)]
 
                 assert len(paths), 'Founds dataset is empty. ' + str(input_['paths'])
-                stage_input[tuple(input_['label'])] = {
+
+                labels = tuple(input_['label'])
+                stage_input[labels] = {
                     'input': load_image,
                     'paths': paths,
                 }
                 
-                if 'case_name' in stage_input and case_names is not None:
-                    stage_input['case_name'] = case_names
+                if case_names is not None:
+                    stage_input[labels]['case_name'] = case_names
                 
             self.stage_inputs.append(stage_input)
 
@@ -200,6 +204,10 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
                     stage_input.update(zip(label, data))
                 else:
                     stage_input[label] = data
+
+                if 'case_name' in input_method:
+                    stage_input['case_name'] = input_method['case_name'][index]
+
             inputs.append(stage_input)
         return inputs
 
