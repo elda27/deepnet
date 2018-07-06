@@ -1,5 +1,6 @@
 import auto_path
 
+import sys
 import argparse
 from functools import reduce
 from deepnet import utils
