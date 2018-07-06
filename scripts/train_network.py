@@ -28,7 +28,7 @@ def main():
     if args.gpu >= 0:
         cuda.get_device(args.gpu).use()
 
-    assert args.stage_index > 0
+    assert args.step_index > 0
 
     dataset_config = deepnet.config.load(args.dataset_config)
     train_index = deepnet.utils.parse_index_file(args.train_index, 0.9)
@@ -37,11 +37,11 @@ def main():
     train_dataset = deepnet.utils.dataset.GeneralDataset(dataset_config, train_index)
     valid_dataset = deepnet.utils.dataset.GeneralDataset(dataset_config, valid_index)
 
-    log_dir = log_util.get_new_training_log_dir(args.log_root_dir, args.log_index, args.stage_index)
+    log_dir = log_util.get_new_training_log_dir(args.log_root_dir, args.log_index, args.step_index)
 
-    visualize_dir = os.path.join(log_dir, 'visualize_stage{}'.format(args.stage_index))
-    archive_dir = os.path.join(log_dir, 'model_stage{}'.format(args.stage_index))
-    param_dir = os.path.join(log_dir, 'param_stage{}'.format(args.stage_index))
+    visualize_dir = os.path.join(log_dir, 'visualize_step{}'.format(args.step_index))
+    archive_dir = os.path.join(log_dir, 'model_step{}'.format(args.step_index))
+    param_dir = os.path.join(log_dir, 'param_step{}'.format(args.step_index))
     log_dirs = {
         'root': log_dir,
         'visualize': visualize_dir,
@@ -64,7 +64,7 @@ def main():
     # Setup logger
     logger = [ 
         deepnet.utils.logger.CsvLogger(
-            os.path.join(log_dir, 'log_stage{}.csv'.format(args.stage_index)), 
+            os.path.join(log_dir, 'log_step{}.csv'.format(args.step_index)), 
             network_config['config']['logging']
             ) 
         ]
@@ -149,7 +149,7 @@ def build_arguments():
 
     parser.add_argument('--log-root-dir', type=str, default='./log/')
     parser.add_argument('--log-index', type=int, default=None, help='Log direcotry index for training.')
-    parser.add_argument('--stage-index', type=int, default=1, help='Stage index')
+    parser.add_argument('--step-index', type=int, default=1, help='step index')
 
     return parser
 
