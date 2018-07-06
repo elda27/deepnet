@@ -37,7 +37,7 @@ def expand_include(config, root_dir = None):
     load_configs = [ ConfigParser(find_include_file(include, root_dir), is_expand_variable=False).config for include in includes ]
     
     load_configs.append(config)
-    for including_config in load_configs
+    for including_config in load_configs:
         for key in including_config:
             if isinstance(including_config[key], list):
                 included_config.setdefault(key, []).extend(including_config[key])
