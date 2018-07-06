@@ -86,7 +86,7 @@ def build_networks(config):
     Returns:
         [network.NetworkManager, list[visualizer.Visualizer]]: Constructed NetworkManager and list of Visualizer objects.
     """
-
+    config = copy.deepcopy(config) # not to affect changes in the other function.
     network_manager = network.NetworkManager(config['config']['input'])
 
     # Geenerate process
