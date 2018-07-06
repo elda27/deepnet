@@ -4,7 +4,10 @@ from deepnet.utils import network, visualizer
 import hashlib
 from datetime import datetime
 from time import sleep
+import glob
+import os.path
 import copy
+from chainer.serializers import load_npz
 
 _registed_network = {}
 _created_process = {}
@@ -148,3 +151,38 @@ def build_networks(config):
         visualizers.append(visualizer.create_visualizer(type_name)(**network_conf))
 
     return network_manager, visualizers
+
+_registed_initialize_field = {}
+
+def register_initialize_field(name):
+    def _register_initialize_field(func):
+        _registed_initialize_field[name] =func
+        return func
+    return _register_initialize_field
+
+def initialize_networks(log_root_dir, step_index, config):
+    """Initialize network
+    
+    Args:
+        log_root_dir (str): Root directory of the log.
+        stage_index (int): Index of the learning step.
+        config (dict): Configuration of the network.
+    """
+
+    if 'initialize' not in config:
+        return
+
+    initialize_fields = config['initialize']
+    for field in initialize_fields:
+        _registed_initialize_field[field['mode']](log_root_dir, step_index, field)
+    
+@register_initialize_field('init_model')
+def initialize_prelearned_model(log_root_dir, step_index, cur_field):
+    name = cur_field['name']
+    created_model = _created_process[name]
+    archive_filename = list(
+        glob.glob(os.path.join(log_root_dir, 'model_step' + str(step_index), name + '_*.npz'))
+    )[-1]
+    
+    load_npz(archive_filename, created_model)
+    
