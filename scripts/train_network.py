@@ -30,14 +30,18 @@ def main():
 
     assert args.step_index > 0
 
+    # Load configs
     dataset_config = deepnet.config.load(args.dataset_config)
+
     train_index = deepnet.utils.parse_index_file(args.train_index, 0.9)
     valid_index = deepnet.utils.parse_index_file(args.valid_index, None)
 
+    # Construct dataset
     train_dataset = deepnet.utils.dataset.GeneralDataset(dataset_config, train_index)
     valid_dataset = deepnet.utils.dataset.GeneralDataset(dataset_config, valid_index)
 
-    log_dir = log_util.get_new_training_log_dir(args.log_root_dir, args.log_index, args.step_index)
+    # Setup directories
+    log_dir = log_util.get_training_log_dir(args.log_root_dir, args.log_index, args.step_index, opt_name=dataset_config['config'].get('exp_name'))
 
     visualize_dir = os.path.join(log_dir, 'visualize_step{}'.format(args.step_index))
     archive_dir = os.path.join(log_dir, 'model_step{}'.format(args.step_index))
@@ -54,7 +58,7 @@ def main():
     os.makedirs(archive_dir, exist_ok=True)
     os.makedirs(param_dir, exist_ok=True)
 
-    # load network configuration
+    # Construct network
     network_config = deepnet.config.load(args.network_config, is_variable_expansion=False)
     network_config = update_log_dir(network_config, log_dirs) # Update log directory
     network_config['hyper_parameter'] = parse_hyper_parameter(args.hyper_param, network_config['hyper_parameter'])
