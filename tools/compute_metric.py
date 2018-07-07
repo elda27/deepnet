@@ -5,6 +5,8 @@ from functools import reduce
 from deepnet import utils
 from deepnet.utils import mhd, visualizer, dataset
 import process
+import os
+import os.path
 
 xp = None
 as_gpu_array = None
