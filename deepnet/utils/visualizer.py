@@ -238,7 +238,10 @@ class TileImageVisualizer(Visualizer):
                 col_shapes[x] = max(images[index].shape[0], col_shapes[x])
                 row_shapes[y] = max(images[index].shape[1], row_shapes[y])
         
-        output_image = np.zeros([sum(col_shapes), sum(row_shapes), 3])
+        output_image = np.tile(
+            np.array( (0, 255, 255) ).reshape((1, 1, 3))
+            (sum(col_shapes) + len(col_shapes) * 2, sum(row_shapes) + len(row_shapes) * 2, 1)
+        )
         
         for h in range(tile_shape[1]):
             for w in range(tile_shape[0]):
@@ -248,8 +251,8 @@ class TileImageVisualizer(Visualizer):
                 image = images[index]
                 if image.ndim == 2:
                     image = np.tile(image[:, :, np.newaxis], (1,1,3))
-                left = sum(col_shapes[:w])
-                top = sum(row_shapes[:h])
+                left = sum(col_shapes[:w]) + h * 2 + 1
+                top = sum(row_shapes[:h])  + w * 2 + 1
                 output_image[left: left + image.shape[0],top: top + image.shape[1],:] = image
         return output_image
     
