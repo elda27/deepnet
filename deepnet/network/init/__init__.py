@@ -74,11 +74,12 @@ def get_process(name):
 
     return _created_process[name]
 
-def build_networks(config):
+def build_networks(config, step=None):
     """Construct network and visualizers from the configuration.
     
     Args:
         config (dict): Configuration of network and visualization after variable expansion.
+        step (int, optional): Current step (Default: None)
     
     Raises:
         KeyError: If requirement keys are not available.
@@ -95,6 +96,12 @@ def build_networks(config):
 
     # Generate processing network
     for network_conf in config['network']:
+        if step in network_conf['step'] and step is not None:
+            selector_step = network_conf['step']
+            if ( isinstance(selector_step, list) and step in selector_step ) or
+               ( step == selector_step ):
+                continue
+
         if 'label' not in network_conf:
             sleep(1e-6)
             now = str(datetime.now()).encode('ascii')
