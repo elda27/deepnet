@@ -174,11 +174,14 @@ def initialize_networks(log_root_dir, step_index, config):
 
     initialize_fields = config['initialize']
     for field in initialize_fields:
-        _registed_initialize_field[field['mode']](log_root_dir, step_index, field)
+        _registed_initialize_field[field['mode']](field, log_root_dir, step_index)
     
-@register_initialize_field('init_model')
-def initialize_prelearned_model(log_root_dir, step_index, cur_field):
-    name = cur_field['name']
+@register_initialize_field('load')
+def initialize_prelearned_model(field, log_root_dir, step_index):
+    if 'from_step' in field:
+        step_index = field['from_step']
+
+    name = field['name']
     created_model = _created_process[name]
     archive_filename = list(
         glob.glob(os.path.join(log_root_dir, 'model_step' + str(step_index), name + '_*.npz'))
@@ -186,3 +189,37 @@ def initialize_prelearned_model(log_root_dir, step_index, cur_field):
     
     load_npz(archive_filename, created_model)
     
+
+@register_initialize_field('share')
+def shared_layer(field, log_root_dir, step_index):
+    def get_field(model, names):
+        if len(names) == 0:
+            return model
+        return get_field(getattr(model, names[0]), names[1:])
+
+    to_fields = field['to']
+    from_fields = field['from']
+
+    if not isinstance(to_fields, list):
+        to_fields = [ to_fields ]
+
+    if not isinstance(from_fields, list):
+        from_fields = [ from_fields ]
+
+    for to_field, from_field in zip():
+        to_names = to_field.split('.')
+        from_names = from_field.split('.')
+
+        from_model = _created_process[from_names[0]]
+        to_model = _created_process[to_names[0]]
+
+        if field.get('deepcopy', False):
+            with to_model.init_scope():
+                from_layer = get_field(from_model, from_names[1:])
+                to_layer = get_field(to_model, to_names[1:])
+                from_layer.copyparams(to_layer)
+        else:
+            with to_model.init_scope():
+                from_layer = get_field(from_model, from_names[1:])
+                setattr(get_field(to_model, to_names[1:-1]), to_names[-1], from_layer)
+
