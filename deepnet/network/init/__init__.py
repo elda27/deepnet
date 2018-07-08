@@ -72,7 +72,7 @@ def get_process(name):
         any: Create process.
     """
 
-    return _created_process[name]
+    return _created_process[name]['proc']
 
 def build_networks(config, step=None):
     """Construct network and visualizers from the configuration.
@@ -110,13 +110,15 @@ def build_networks(config, step=None):
         proc = None
         updatable = False
         process_name = network_conf.pop('process')
-        if process_name in _created_process: # If process is exist.
+        process_names = process_name.split('.')
+        if process_names[0] in _created_process: # If process is exist.
             # :TODO: The updatable parameter use for optimization of the network.
             #        But this implementation need after implementation of optimization configuration
             #        on the config field. (Maybe the implmentation of staging optimization too)
 
-            registed_proc = _created_process[process_name] # registed_proc contains 'proc' and 'proerty', and so on.
+            registed_proc = _created_process[process_names[0]] # registed_proc contains 'proc' and 'proerty', and so on.
             proc = registed_proc['proc']
+            proc = deepnet.utils.get_field(proc, process_names[1:])
             updatable = 'update' in registed_proc['property']
             _updatable_process.append(proc)
 
@@ -130,8 +132,6 @@ def build_networks(config, step=None):
                 input=network_conf['input'],
                 output=network_conf['output'],
                 ))
-
-        #args = copy.deepcopy(network_conf)
 
         network_manager.add(
             network_conf.pop('label'), 
@@ -199,13 +199,10 @@ def initialize_prelearned_model(field, log_root_dir, step_index):
 
 @register_initialize_field('share')
 def shared_layer(field, log_root_dir, step_index):
-    def get_field(model, names):
-        if len(names) == 0:
-            return model
-        return get_field(getattr(model, names[0]), names[1:])
-
+    get_field = deepnet.utils.get_field
     to_fields = field['to']
     from_fields = field['from']
+    freeze_layer = field.get('freeze', False)
 
     if not isinstance(to_fields, list):
         to_fields = [ to_fields ]
@@ -220,13 +217,19 @@ def shared_layer(field, log_root_dir, step_index):
         from_model = _created_process[from_names[0]]
         to_model = _created_process[to_names[0]]
 
-        if field.get('deepcopy', False):
-            with to_model.init_scope():
+        with to_model.init_scope():
+            if field.get('deepcopy', False):
                 from_layer = get_field(from_model, from_names[1:])
-                to_layer = get_field(to_model, to_names[1:])
+                
+                to_parent_layer = get_field(to_model, to_names[1:-1])
+                to_layer = get_field(to_parent_layer, to_names[-1])
+                
                 from_layer.copyparams(to_layer)
-        else:
-            with to_model.init_scope():
+                if hasattr(to_parent_layer, 'layers'):
+                    to_parent_layer.layers['from'] = to_layer
+            else:
                 from_layer = get_field(from_model, from_names[1:])
                 setattr(get_field(to_model, to_names[1:-1]), to_names[-1], from_layer)
-
+                if hasattr(to_layer, 'layers'):
+                    to_layer.layers[to_names[-1]] = from_layer
+        
