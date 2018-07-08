@@ -66,3 +66,8 @@ def deprecated():
         )
         return func
     return _deprecated
+
+def get_field(model, names):
+    if len(names) == 0:
+        return model
+    return get_field(getattr(model, names[0]), names[1:])
