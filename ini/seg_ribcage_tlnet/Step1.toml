@@ -1,0 +1,132 @@
+
+[config]
+input = [
+  'label'
+]
+
+logging = [
+  '__train_iteration__', 
+  'train.loss_sigmoid', 'valid.loss_sigmoid',
+  'train.loss_softmax', 'valid.loss_softmax',
+  'train.loss', 'valid.loss'
+]
+
+archive_nodes = ['CAE']
+optimizing_loss = ['loss']
+
+[hyper_parameter]
+n_dim = 2
+n_class = 14
+n_encode_dim = 256
+gaussian_sigma = 0.05
+
+[[process]]
+label  = "CAE"
+type   = "network.cae"
+update = "loss"
+
+# Arguments
+n_dim = "${hyper_parameter.n_dim}"
+in_out_channel = "${hyper_parameter.n_class}"
+encode_dim = "${hyper_parameter.n_encode_dim}"
+dropout = "dropout"
+use_batch_norm = true
+
+# Network declaration
+[[network]]
+input=["label"]
+process="to_gpu"
+output=["gpu_label"]
+
+## Apply gaussian noise
+[[network]]
+input = "gpu_label"
+process = "apply_gaussian_noise"
+output = "gpu_noisy_label"
+
+clip = [0.0, 1.0]
+sigma = "${hyper_parameter.gaussian_sigma}"
+
+## Reconstruct label
+[[network]]
+input="gpu_noisy_label"
+label="CAE"
+process="CAE"
+output="gpu_raw_pred_label"
+
+## Losses
+[[network]]
+input  ="gpu_label"
+process="cast_type"
+dtype='int32'
+output ="i_gpu_label"
+test = false
+
+[[network]]
+input=[ "gpu_raw_pred_label", "i_gpu_label" ]
+process="chainer.sigmoid_cross_entropy"
+output="loss_sigmoid"
+test=false
+
+## Activated pred label
+[[network]]
+input   = "gpu_raw_pred_label"
+process = "chainer.sigmoid"
+output  = "gpu_pred_label"
+
+[[network]]
+input=[ "gpu_pred_label", "gpu_label" ]
+process="loss.total_softmax_cross_entropy"
+output="loss_softmax"
+test=false
+
+#[[network]]
+#input=[ "gpu_pred_label", "gpu_label" ]
+#process="loss.euclidean_distance"
+#output="loss_euclid"
+#test=false
+
+[[network]]
+input = ["loss_sigmoid", "loss_softmax"]
+output = "loss"
+process = "reduce"
+operation = "+"
+weight = [ 2.0, 1.0 ]
+test = false
+
+## Index to Color label
+[[network]]
+process = "make_overlap_label"
+input   = [ "gpu_label", "gpu_noisy_label", "gpu_pred_label" ]
+output  = [ "gpu_color_label", "gpu_color_noisy_label", "gpu_color_pred_label"]
+train=false
+test=false
+
+# Nch image visualizer
+[[visualize]]
+type = "nch_visualizer"
+output_filename = "${visualize_dir}/{__train_iteration__:08d}_nch_tile.png"
+num_rows = 5
+n_ch = "${hyper_parameter.n_class}"
+n_ch_images = ["gpu_label", "gpu_pred_label"]
+overlap_images = [ "gpu_blend_label", "gpu_blend_pred_label" ]
+subtract = [ ['gpu_label', 'gpu_pred_label'] ]
+
+# Visualize declaration
+[[visualize]]
+type  = "image_write"
+image_names = [ 
+  "gpu_pred_label", "gpu_noisy_label", "gpu_label" 
+  ]
+output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__name__}_{__index__}.mhd'
+num_images = 3
+
+[[visualize]]
+type = "tile_image_visualizer"
+output_filename = "${visualize_dir}/{__train_iteration__:08d}_tile.png"
+tile_shape = [5, 5]
+block_images =  [ 
+  "gpu_color_label", "gpu_color_noisy_label", "gpu_color_pred_label",    
+  ]
+block_shape = [1, 3]
+
