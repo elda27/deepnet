@@ -82,8 +82,14 @@ def main():
         if args.gpu >=0:
             model.to_gpu()
         optimizer.setup(model)
-        
     optimizers.append(optimizer)
+    
+    # Freeze to update layer
+    for layer_name in network_config['config'].get('freezing_layer', []):
+        layers = layer_name.split('.')
+        model = deepnet.network.init.get_process(layers[0])
+        deepnet.utils.get_field(model, layers[1:]).disable_update()
+
 
     # Save variables
     with open(os.path.join(param_dir, 'args.json'), 'w+') as fp:
