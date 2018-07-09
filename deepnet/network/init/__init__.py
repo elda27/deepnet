@@ -217,19 +217,19 @@ def shared_layer(field, log_root_dir, step_index):
         from_model = _created_process[from_names[0]]
         to_model = _created_process[to_names[0]]
 
+        from_layer = get_field(from_model, from_names[1:])
+        to_parent_layer = get_field(to_model, to_names[1:-1])
+
         with to_model.init_scope():
             if field.get('deepcopy', False):
-                from_layer = get_field(from_model, from_names[1:])
+                if hasattr(to_parent_layer, to_names[-1]):
+                    raise AttributeError('Destination layer doesn\'t have attribute: {}'.format(to_names[-1]))
+                from_layer.copyparams(getattr(to_parent_layer, to_names[-1]))
                 
-                to_parent_layer = get_field(to_model, to_names[1:-1])
-                to_layer = get_field(to_parent_layer, to_names[-1])
-                
-                from_layer.copyparams(to_layer)
                 if hasattr(to_parent_layer, 'layers'):
-                    to_parent_layer.layers['from'] = to_layer
+                    to_parent_layer.layers[to_names[-1]] = to_layer
             else:
-                from_layer = get_field(from_model, from_names[1:])
-                setattr(get_field(to_model, to_names[1:-1]), to_names[-1], from_layer)
-                if hasattr(to_layer, 'layers'):
-                    to_layer.layers[to_names[-1]] = from_layer
+                setattr(to_parent_layer, to_names[-1], from_layer)
+                if hasattr(to_parent_layer, 'layers'):
+                    to_parent_layer.layers[to_names[-1]] = from_layer
         
