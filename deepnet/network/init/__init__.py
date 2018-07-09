@@ -98,7 +98,7 @@ def build_networks(config, step=None):
     for network_conf in config['network']:
         if step in network_conf['step'] and step is not None:
             selector_step = network_conf['step']
-            if ( isinstance(selector_step, list) and step in selector_step ) or
+            if ( isinstance(selector_step, list) and step in selector_step ) or \
                ( step == selector_step ):
                 continue
 
