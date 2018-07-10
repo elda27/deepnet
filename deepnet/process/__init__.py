@@ -2,16 +2,19 @@ import chainer
 import chainer.functions as F
 import math
 import numpy as np
+
 NO_CUPY = False
 try:
     import cupy as cp
 except ImportError:
     NO_CUPY = True
     pass
+
 import functools
 from itertools import cycle
 
 from deepnet import utils
+from deepnet.process import drr
 
 _registed_process = {
     'chainer.sigmoid': F.sigmoid,
@@ -21,6 +24,7 @@ _registed_process = {
     'chainer.sigmoid_cross_entropy': F.sigmoid_cross_entropy,
     'chainer.softmax_cross_entropy': F.softmax_cross_entropy,
     'chainer.batch_l2_norm_squared': F.batch_l2_norm_squared,
+    'HU2Myu': drr.pydrr.utils.HU2Myu,
 }
 
 def register_process(name = None):
@@ -288,3 +292,16 @@ def _expand_background(labels):
 def _make_overlap(labels):
     labels = _expand_background(labels)
     return F.argmax(labels, axis=1)
+
+@register_process()
+def volume_rendering(volume, spacing, case_name = None, **kwargs):
+    projector = drr.VolumeProjector(**kwargs)
+
+    cpu_volume = utils.unwrapped(volume) # :TODO: Support cupy to pycuda translation.
+    if cpu_volume.ndim >= 4:
+        images = []
+        for i in range(len(cpu_volume)):
+            images.append(projector(volume[i], spacing[i], case_name[i] if case_name is not None else None))
+        return images
+    else:
+        return projector(volume, spacing, case_name)
