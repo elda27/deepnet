@@ -37,7 +37,11 @@ def generate_network(name, **kwargs):
         object: Registed network coresponding name
     """
 
-    return _registed_network[name](**kwargs)
+    try:
+        return _registed_network[name](**kwargs)
+    except TypeError:
+        print('Unexpected keyword error:\nThe problem argument is {}'.format(kwargs))
+        raise
 
 def build_process(process_config):
     """Construct process from process tag of the configuration.
@@ -50,8 +54,8 @@ def build_process(process_config):
     assert 'label' in process_config, 'Key error: ' + str(process_config)
     assert 'type' in process_config, 'Key error: ' + str(process_config)
     
-    type_name = process_config['type']
-    label = process_config['label']
+    type_name = process_config.pop('type')
+    label = process_config.pop('label')
 
     assert label not in _created_process, 'Process label is duplicated:' + label
 
