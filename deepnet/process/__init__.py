@@ -1,5 +1,6 @@
 import chainer
 import chainer.functions as F
+from chainer import cuda
 import math
 import numpy as np
 NO_CUPY = False
@@ -173,13 +174,8 @@ def bias(x, multiply=1.0, bias_=1.0):
 
 @register_process()
 def apply_gaussian_noise(x, sigma=1.0, clip=None, device=-1):
-    ones = None
-    if device >= 0:
-        ones = cp.ones_like(x.data)
-        zeros = cp.ones_like(x.data)
-    else:
-        ones = np.ones_like(x.data)
-    ones = chainer.Variable(ones)
+    xp = cuda.get_array_module(x)
+    ones = chainer.Variable(xp.ones_like(x.data))
 
     if clip is None:
         result = F.gaussian(x, math.log(sigma) * ones)
@@ -263,7 +259,7 @@ def euclidean_distance(x, t):
     return F.mean(F.batch_l2_norm_squared(F.reshape(x - t, linear_shape)))
 
 @register_process('loss.total_softmax_cross_entropy')
-def total_softmax_cross_entropy(x, t, normalize=False):
+def total_softmax_cross_entropy(x, t, normalize=True):
     assert len(x) == len(t)
     num_channels = len(t)
     xs = F.expand_dims(x, axis=1)
