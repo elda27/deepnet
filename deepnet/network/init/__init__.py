@@ -9,36 +9,51 @@ import os.path
 import copy
 from chainer.serializers import load_npz
 
-_registed_network = {}
+_registered_network = {}
 _created_process = {}
 _updatable_process = []
+_registered_arguments_wrappers = {}
 
-def register_network(name):
+def register_network(name, wrap_args = {}):
     """Decorator function to register network by label.
     
     Args:
         name (str): label of registering network
     """
 
-    assert name not in _registed_network, 'Registering key name is exist. ' + name
+    assert name not in _registered_network, 'Registering key name is exist. ' + name
     def _register_network(klass):
-        _registed_network[name] = klass
+        _registered_network[name] = { "class": klass, "args": wrap_args } 
         return klass
     return _register_network
 
+def register_argument_wrapper(spec_name):
+    assert spec_name not in _registered_arguments_wrappers, 'Registering key name is exist. ' + spec_name
+    def _register_arguments_wrappers(func):
+        _registered_arguments_wrappers[spec_name] = func
+        return func
+    return _register_arguments_wrappers
+
 def generate_network(name, **kwargs):
-    """Generate registed network from name
+    """Generate registered network from name
     
     Args:
         name (str): Label of registered by register_network function.
         kwargs : Network arguments.
     
     Returns:
-        object: Registed network coresponding name
+        object: registered network coresponding name
     """
 
     try:
-        return _registed_network[name](**kwargs)
+        target_network = _registered_network[name]
+        # Wrap arguments
+        for key, spec_name in target_network['args'].items():
+            if key not in kwargs:
+                continue
+            kwargs[key] = _registered_arguments_wrappers[spec_name](kwargs[key])
+
+        return target_network['class'](**kwargs)
     except TypeError:
         print('Unexpected keyword error:\nThe problem argument is {}'.format(kwargs))
         raise
@@ -120,14 +135,14 @@ def build_networks(config, step=None):
             #        But this implementation need after implementation of optimization configuration
             #        on the config field. (Maybe the implmentation of staging optimization too)
 
-            registed_proc = _created_process[process_names[0]] # registed_proc contains 'proc' and 'proerty', and so on.
-            proc = registed_proc['proc']
+            registered_proc = _created_process[process_names[0]] # registered_proc contains 'proc' and 'proerty', and so on.
+            proc = registered_proc['proc']
             proc = deepnet.utils.get_field(proc, process_names[1:])
-            updatable = 'update' in registed_proc['property']
+            updatable = 'update' in registered_proc['property']
             _updatable_process.append(proc)
 
-        elif process_name in process._registed_process:
-            proc = process._registed_process[process_name]
+        elif process_name in process._registered_process:
+            proc = process._registered_process[process_name]
             updatable = False
 
         else:
@@ -163,11 +178,17 @@ def build_networks(config, step=None):
 
     return network_manager, visualizers
 
-_registed_initialize_field = {}
+@register_argument_wrapper('network')
+def wrap_network_name(network_name):
+    names = network_name.split('.')
+    model = get_process(names[0])
+    return deepnet.utils.get_field(model, names[1:])
+
+_registered_initialize_field = {}
 
 def register_initialize_field(name):
     def _register_initialize_field(func):
-        _registed_initialize_field[name] =func
+        _registered_initialize_field[name] =func
         return func
     return _register_initialize_field
 
@@ -185,7 +206,7 @@ def initialize_networks(log_root_dir, step_index, config):
 
     initialize_fields = config['initialize']
     for field in initialize_fields:
-        _registed_initialize_field[field['mode']](field, log_root_dir, step_index)
+        _registered_initialize_field[field['mode']](field, log_root_dir, step_index)
     
 @register_initialize_field('load')
 def initialize_prelearned_model(field, log_root_dir, step_index):
@@ -193,7 +214,7 @@ def initialize_prelearned_model(field, log_root_dir, step_index):
         step_index = field['from_step']
 
     name = field['name']
-    created_model = _created_process[name]
+    created_model = get_process(name)
     archive_filename = list(
         glob.glob(os.path.join(log_root_dir, 'model_step' + str(step_index), name + '_*.npz'))
     )[-1]
@@ -218,8 +239,8 @@ def shared_layer(field, log_root_dir, step_index):
         to_names = to_field.split('.')
         from_names = from_field.split('.')
 
-        from_model = _created_process[from_names[0]]
-        to_model = _created_process[to_names[0]]
+        from_model = get_process(from_names[0])
+        to_model = get_process(to_names[0])
 
         from_layer = get_field(from_model, from_names[1:])
         to_parent_layer = get_field(to_model, to_names[1:-1])

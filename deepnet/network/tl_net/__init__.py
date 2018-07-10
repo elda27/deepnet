@@ -5,7 +5,10 @@ import chainer.links as L
 
 from deepnet.network.init import register_network
 
-@register_network('network.tl-net.segnet')
+@register_network(
+    'network.tl-net.segnet',
+    wrap_args={ 'decoder':'network' }
+    )
 class Segnet(chainer.Chain):
     def __init__(self,
         n_dim,
@@ -16,8 +19,7 @@ class Segnet(chainer.Chain):
         super().__init__()
         self.use_skipping_connection = use_skipping_connection
         with self.init_scope():
-            if decoder is not None:
-                self.decoder = decoder
+            self.decoder = decoder
             self.encoder = conv_auto_encoder.Encoder(
                 n_dim, in_channel,
                 encode_dim= self.decoder.input_dim,

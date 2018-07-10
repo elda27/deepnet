@@ -23,19 +23,19 @@ import os.path
 from deepnet.utils import mhd
 from deepnet import utils, process
 
-_registed_visualizers = {}
+_registered_visualizers = {}
 
 def register_visualizer(name):
     def _register_visualizer(func):
-        assert name not in _registed_visualizers, 'Duplicating visualizer label.'
-        _registed_visualizers[name] = func
+        assert name not in _registered_visualizers, 'Duplicating visualizer label.'
+        _registered_visualizers[name] = func
         return func
     return _register_visualizer
 
 def create_visualizer(name):
-    if name not in _registed_visualizers:
+    if name not in _registered_visualizers:
         raise ValueError('Unknown visualizer: {}'.format(name))
-    return _registed_visualizers[name]
+    return _registered_visualizers[name]
 
 def save_image(filename, image, spacing):
     _, ext = os.path.splitext(filename)
