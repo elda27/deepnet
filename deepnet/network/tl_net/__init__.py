@@ -8,7 +8,7 @@ from deepnet.network.init import register_network
 @register_network('network.tl-net.segnet')
 class Segnet(chainer.Chain):
     def __init__(self,
-        n_dims,
+        n_dim,
         in_channel, 
         decoder = None, 
         use_skipping_connection='none'
@@ -19,7 +19,7 @@ class Segnet(chainer.Chain):
             if decoder is not None:
                 self.decoder = decoder
             self.encoder = conv_auto_encoder.Encoder(
-                n_dims, in_channel,
+                n_dim, in_channel,
                 encode_dim= self.decoder.input_dim,
                 n_layers= self.decoder.n_layers,
                 n_units = self.decoder.n_units
