@@ -19,6 +19,7 @@ n_dim = 2
 n_class = 14
 n_encode_dim = 256
 gaussian_sigma = 0.05
+n_layers = 5
 
 [[process]]
 label  = "CAE"
@@ -31,6 +32,7 @@ in_out_channel = "${hyper_parameter.n_class}"
 encode_dim = "${hyper_parameter.n_encode_dim}"
 dropout = "dropout"
 use_batch_norm = true
+n_layers = "${hyper_parameter.n_layers}"
 
 # Network declaration
 [[network]]
@@ -66,6 +68,7 @@ test = false
 input=[ "gpu_raw_pred_label", "i_gpu_label" ]
 process="chainer.sigmoid_cross_entropy"
 output="loss_sigmoid"
+normalize=false
 test=false
 
 ## Activated pred label
@@ -78,20 +81,21 @@ output  = "gpu_pred_label"
 input=[ "gpu_pred_label", "gpu_label" ]
 process="loss.total_softmax_cross_entropy"
 output="loss_softmax"
+normalize=false
 test=false
 
-#[[network]]
-#input=[ "gpu_pred_label", "gpu_label" ]
-#process="loss.euclidean_distance"
-#output="loss_euclid"
-#test=false
+[[network]]
+input=[ "gpu_pred_label", "gpu_label" ]
+process="loss.euclidean_distance"
+output="loss_euclid"
+test=false
 
 [[network]]
-input = ["loss_sigmoid", "loss_softmax"]
+input = ["loss_sigmoid", "loss_softmax", "loss_euclid"]
 output = "loss"
 process = "reduce"
 operation = "+"
-weight = [ 2.0, 1.0 ]
+weights = [ 1.0, 1.0, 1.0 ]
 test = false
 
 ## Index to Color label
@@ -109,7 +113,7 @@ output_filename = "${visualize_dir}/{__train_iteration__:08d}_nch_tile.png"
 num_rows = 5
 n_ch = "${hyper_parameter.n_class}"
 n_ch_images = ["gpu_label", "gpu_pred_label"]
-overlap_images = [ "gpu_blend_label", "gpu_blend_pred_label" ]
+overlap_images = [ "gpu_color_label", "gpu_color_pred_label" ]
 subtract = [ ['gpu_label', 'gpu_pred_label'] ]
 
 # Visualize declaration

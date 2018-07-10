@@ -23,19 +23,19 @@ import os.path
 from deepnet.utils import mhd
 from deepnet import utils, process
 
-_registed_visualizers = {}
+_registered_visualizers = {}
 
 def register_visualizer(name):
     def _register_visualizer(func):
-        assert name not in _registed_visualizers, 'Duplicating visualizer label.'
-        _registed_visualizers[name] = func
+        assert name not in _registered_visualizers, 'Duplicating visualizer label.'
+        _registered_visualizers[name] = func
         return func
     return _register_visualizer
 
 def create_visualizer(name):
-    if name not in _registed_visualizers:
+    if name not in _registered_visualizers:
         raise ValueError('Unknown visualizer: {}'.format(name))
-    return _registed_visualizers[name]
+    return _registered_visualizers[name]
 
 def save_image(filename, image, spacing):
     _, ext = os.path.splitext(filename)
@@ -215,9 +215,9 @@ class TileImageVisualizer(Visualizer):
         return False
 
     def get_figure(self):
-        return self.make_tile_2d(self.images, self.tile_shape)
+        return self.make_tile_2d(self.images, self.tile_shape, contour=True)
 
-    def make_tile_2d(self, images, shape):
+    def make_tile_2d(self, images, shape, contour=False):
         assert len(shape) == 2, 'The shape of tile image has two dimension. {}, Length{}'.format(shape, len(shape))
         assert not (shape[0] is None and shape[1] is None), 'The element of shape is either one must not be None'
     
@@ -238,10 +238,14 @@ class TileImageVisualizer(Visualizer):
                 col_shapes[x] = max(images[index].shape[0], col_shapes[x])
                 row_shapes[y] = max(images[index].shape[1], row_shapes[y])
         
-        output_image = np.tile(
-            np.array( (0, 255, 255) ).reshape((1, 1, 3))
-            (sum(col_shapes) + len(col_shapes) * 2, sum(row_shapes) + len(row_shapes) * 2, 1)
-        )
+        output_image = None
+        if contour:
+            output_image = np.tile(
+                np.array( (255, 255, 0) ).reshape((1, 1, 3)),
+                (sum(col_shapes) + len(col_shapes) * 2, sum(row_shapes) + len(row_shapes) * 2, 1)
+            )
+        else:
+            output_image = np.zeros((sum(col_shapes), sum(row_shapes), 3))
         
         for h in range(tile_shape[1]):
             for w in range(tile_shape[0]):
@@ -251,8 +255,8 @@ class TileImageVisualizer(Visualizer):
                 image = images[index]
                 if image.ndim == 2:
                     image = np.tile(image[:, :, np.newaxis], (1,1,3))
-                left = sum(col_shapes[:w]) + h * 2 + 1
-                top = sum(row_shapes[:h])  + w * 2 + 1
+                left = sum(col_shapes[:w]) + (w * 2 + 1 if contour else 0)
+                top = sum(row_shapes[:h])  + (h * 2 + 1 if contour else 0)
                 output_image[left: left + image.shape[0],top: top + image.shape[1],:] = image
         return output_image
     

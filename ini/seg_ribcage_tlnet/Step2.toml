@@ -8,6 +8,7 @@ logging = [
   '__train_iteration__', 
   'train.loss_sigmoid', 'valid.loss_sigmoid',
   'train.loss_softmax', 'valid.loss_softmax',
+  'train.loss_euclid', 'valid.loss_euclid',
   'train.loss', 'valid.loss'
 ]
 
@@ -21,6 +22,7 @@ in_channel = 1
 n_class = 14
 n_encode_dim = 256
 gaussian_sigma = 0.05
+n_layers = 5
 
 [[process]]
 label  = "CAE"
@@ -32,10 +34,12 @@ in_out_channel = "${hyper_parameter.n_class}"
 encode_dim = "${hyper_parameter.n_encode_dim}"
 dropout = "dropout"
 use_batch_norm = true
+n_layers = "${hyper_parameter.n_layers}"
 
 [[process]]
 label = "Segnet"
 type = "network.tl-net.segnet"
+decoder = "CAE.decoder"
 
 n_dim = "${hyper_parameter.n_dim}"
 in_channel = 1
@@ -43,23 +47,26 @@ in_channel = 1
 [[initialize]]
 mode = "load"
 name = "CAE"
-
-[[initialize]]
-mode = "share"
-from = "CAE.decoder"
-to = "Segnet.decoder"
+from_step = 1
 
 # Network declaration
 [[network]]
 input=["image", "label"]
 process="to_gpu"
-output=["gpu_image", "gpu_label"]
+output=["gpu_image_tmp", "gpu_label"]
+
+## Expand dim for intensity image
+[[network]]
+input="gpu_image_tmp"
+process="chainer.expand_dims"
+output="gpu_image"
+axis=1
 
 ## Segmentation
 [[network]]
 input  = "gpu_image"
 process = "Segnet"
-label  = "Segnet"
+label="Segnet"
 output = "gpu_raw_pred_label"
 
 ## Losses
@@ -74,6 +81,7 @@ test = false
 input=[ "gpu_raw_pred_label", "i_gpu_label" ]
 process="chainer.sigmoid_cross_entropy"
 output="loss_sigmoid"
+normalize=false
 test=false
 
 ## Activated pred label
@@ -86,20 +94,21 @@ output  = "gpu_pred_label"
 input=[ "gpu_pred_label", "gpu_label" ]
 process="loss.total_softmax_cross_entropy"
 output="loss_softmax"
+normalize=false
 test=false
 
-#[[network]]
-#input=[ "gpu_pred_label", "gpu_label" ]
-#process="loss.euclidean_distance"
-#output="loss_euclid"
-#test=false
+[[network]]
+input=[ "gpu_pred_label", "gpu_label" ]
+process="loss.euclidean_distance"
+output="loss_euclid"
+test=false
 
 [[network]]
-input = ["loss_sigmoid", "loss_softmax"]
+input = ["loss_sigmoid", "loss_softmax", "loss_euclid"]
 output = "loss"
 process = "reduce"
 operation = "+"
-weight = [ 2.0, 1.0 ]
+weights = [ 1.0, 1.0, 1.0 ]
 test = false
 
 ## Index to Color label

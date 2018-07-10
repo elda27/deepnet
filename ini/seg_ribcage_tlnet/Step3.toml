@@ -21,6 +21,7 @@ n_dim = 2
 in_channel = 1
 n_class = 14
 n_encode_dim = 256
+n_layers = 5
 
 # loss weights
 lw_sigmoid = 2.0
@@ -37,6 +38,7 @@ in_out_channel = "${hyper_parameter.n_class}"
 encode_dim = "${hyper_parameter.n_encode_dim}"
 dropout = "dropout"
 use_batch_norm = true
+n_layers = "${hyper_parameter.n_layers}"
 
 [[process]]
 label = "Segnet"
@@ -48,10 +50,13 @@ in_channel = 1
 [[initialize]]
 mode = "load"
 name = "CAE"
+from_step = 1
 
 [[initialize]]
 mode = "load"
 name = "Segnet"
+from_step = 2
+
 
 # Network declaration
 [[network]]
@@ -114,7 +119,7 @@ input = ["loss_sigmoid", "loss_softmax", 'loss_code']
 output = "loss"
 process = "reduce"
 operation = "+"
-weight = [ 
+weights = [ 
   "${hyper_parameter.lw_sigmoid}", 
   "${hyper_parameter.lw_softmax}", 
   "${hyper_parameter.lw_code}" 

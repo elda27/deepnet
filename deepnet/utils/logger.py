@@ -7,6 +7,8 @@ class Logger:
     def __init__(self, output_filename, dump_variables):
         self.output_filename = output_filename
         self.dump_variables = dump_variables
+        if os.path.exists(output_filename):
+            os.remove(output_filename)
 
     def __call__(self, variables, is_valid=False):
         dump_vars = { var_name:variables[var_name] if var_name in variables else '' for var_name in self.dump_variables }

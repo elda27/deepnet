@@ -74,6 +74,11 @@ class Trainer:
                     if i == 0:
                         self.write_network_architecture(os.path.join(self.archive_dir, 'model_{}.dot'.format(loss_name)), loss)
                     
+                    xp = cuda.get_array_module(loss)
+                    if xp.isnan(loss.data):
+                        raise ValueError('Loss is NaN: {}'.format(loss_name))
+
+
                     self.network.update()
                     loss.backward()
                     optimizer.update()
@@ -81,7 +86,7 @@ class Trainer:
                 # Update variables and unwrapping chainer variable
                 for var_name, value in variables.items():
                     variables[var_name] = utils.unwrapped(value)
-                variables.update({ 'train.' + name: utils.unwrapped(value) for name, value in self.network.variables.items() })
+                variables.update({ 'train.' + name: utils.unwrapped(value) for name, value in variables.items() })
 
                 # validation if current iteraiton is multiplier as n_valid_step
                 valid_keys = []
