@@ -294,14 +294,25 @@ def _make_overlap(labels):
     return F.argmax(labels, axis=1)
 
 @register_process()
-def volume_rendering(volume, spacing, case_name = None, **kwargs):
+def volume_rendering(
+    volume, spacing, case_name = None, 
+    hu_volume=True, pose=[], **kwargs
+    ):
+
+    if len(pose) == 0:
+        pose.append([0, 0, 0])
+
     projector = drr.VolumeProjector(**kwargs)
 
     cpu_volume = utils.unwrapped(volume) # :TODO: Support cupy to pycuda translation.
+    if hu_volume:
+        cpu_volume = drr.pydrr.utils.HU2Myu(cpu_volume, 0.02)
+
     if cpu_volume.ndim >= 4:
         images = []
         for i in range(len(cpu_volume)):
-            images.append(projector(volume[i], spacing[i], case_name[i] if case_name is not None else None))
+            i_volume = cpu_volume[i]
+            images.append(projector(i_volume, spacing[i], case_name[i] if case_name is not None else None))
         return images
     else:
-        return projector(volume, spacing, case_name)
+        return projector(cpu_volume, spacing, case_name)
