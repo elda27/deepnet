@@ -74,6 +74,11 @@ class Trainer:
                     if i == 0:
                         self.write_network_architecture(os.path.join(self.archive_dir, 'model_{}.dot'.format(loss_name)), loss)
                     
+                    xp = cuda.get_array_module(loss)
+                    if xp.isnan(loss.data):
+                        raise ValueError('Loss is NaN: {}'.format(loss_name))
+
+
                     self.network.update()
                     loss.backward()
                     optimizer.update()
