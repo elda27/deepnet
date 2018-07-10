@@ -24,7 +24,9 @@ class Segnet(chainer.Chain):
                 n_dim, in_channel,
                 encode_dim= self.decoder.input_dim,
                 n_layers= self.decoder.n_layers,
-                n_units = self.decoder.n_units
+                n_units = self.decoder.n_units,
+                dropout = self.decoder.dropout,
+                use_batch_norm= self.decoder.use_batch_norm
                 )
         
         self.layers = dict(

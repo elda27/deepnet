@@ -77,6 +77,8 @@ class Decoder(chainer.Chain):
         self.out_channel = out_channel
         self.n_units = n_units
         self.upsample_start_shape = upsample_start_shape
+        self.use_batch_norm = use_batch_norm
+        self.dropout        = dropout
         self.use_skipping_connection = use_skipping_connection
         self.apply_next = DECODER_APPLY_NEXT_DICT[self.use_skipping_connection]
 
@@ -180,6 +182,8 @@ class ConvolutionalAutoEncoder(chainer.Chain):
         **kwargs):
         self.layers = {}
         self.n_dim = n_dim
+        self.use_batch_norm = use_batch_norm
+        self.dropout = dropout
         self.use_skipping_connection = use_skipping_connection
         self.vae_unit = None
         chainer.Chain.__init__(self)
