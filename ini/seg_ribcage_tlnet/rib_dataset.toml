@@ -1,6 +1,6 @@
 
 [config]
-exp_name = "rib_segmentation"
+exp_name = "rib_segmentation_tlnet"
 case_names = [
   "CXDI40C_01",
   "CXDI40C_03",

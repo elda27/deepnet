@@ -82,18 +82,18 @@ process="loss.total_softmax_cross_entropy"
 output="loss_softmax"
 test=false
 
-#[[network]]
-#input=[ "gpu_pred_label", "gpu_label" ]
-#process="loss.euclidean_distance"
-#output="loss_euclid"
-#test=false
+[[network]]
+input=[ "gpu_pred_label", "gpu_label" ]
+process="loss.euclidean_distance"
+output="loss_euclid"
+test=false
 
 [[network]]
-input = ["loss_sigmoid", "loss_softmax"]
+input = ["loss_sigmoid", "loss_softmax", "loss_euclid"]
 output = "loss"
 process = "reduce"
 operation = "+"
-weights = [ 2.0, 1.0 ]
+weights = [ 1.0, 1.0, 1.0 ]
 test = false
 
 ## Index to Color label
