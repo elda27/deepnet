@@ -224,7 +224,8 @@ def shared_layer(field, log_root_dir, step_index):
             if field.get('deepcopy', False):
                 if hasattr(to_parent_layer, to_names[-1]):
                     raise AttributeError('Destination layer doesn\'t have attribute: {}'.format(to_names[-1]))
-                from_layer.copyparams(getattr(to_parent_layer, to_names[-1]))
+                to_layer = getattr(to_parent_layer, to_names[-1])
+                from_layer.copyparams(to_layer)
                 
                 if hasattr(to_parent_layer, 'layers'):
                     to_parent_layer.layers[to_names[-1]] = to_layer
