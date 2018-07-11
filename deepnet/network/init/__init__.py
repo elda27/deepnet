@@ -9,6 +9,8 @@ import os.path
 import copy
 from chainer.serializers import load_npz
 
+import warnings
+
 _registered_network = {}
 _created_process = {}
 _updatable_process = []
@@ -70,7 +72,8 @@ def build_process(process_config):
     assert 'type' in process_config, 'Key error: ' + str(process_config)
     
     type_name = process_config.pop('type')
-    label = process_config.pop('label')
+    label     = process_config.pop('label')
+    update    = process_config.pop('update', None) 
 
     assert label not in _created_process, 'Process label is duplicated:' + label
 
@@ -78,7 +81,8 @@ def build_process(process_config):
 
     _created_process[label] = {
         'proc': proc,
-        'property': process_config
+        'property': process_config,
+        'update': update,
     }
 
 def get_process(name):
@@ -138,8 +142,10 @@ def build_networks(config, step=None):
             registered_proc = _created_process[process_names[0]] # registered_proc contains 'proc' and 'proerty', and so on.
             proc = registered_proc['proc']
             proc = deepnet.utils.get_field(proc, process_names[1:])
-            updatable = 'update' in registered_proc['property']
+            updatable = registered_proc['update'] is not None
             _updatable_process.append(proc)
+            if not updatable:
+                warnings.warn('A defined network is used on network stream but an not updatable network. {}'.format(process_names[0]))
 
         elif process_name in process._registered_process:
             proc = process._registered_process[process_name]
