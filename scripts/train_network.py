@@ -65,6 +65,9 @@ def main():
     network_config = deepnet.config.expand_variable(network_config)
     network_manager, visualizers = deepnet.network.init.build_networks(network_config)
 
+    # Initialize network
+    deepnet.network.init.initialize_networks(log_dir, args.step_index, network_config)
+
     # Setup logger
     logger = [ 
         deepnet.utils.logger.CsvLogger(
@@ -83,13 +86,12 @@ def main():
             model.to_gpu()
         optimizer.setup(model)
     optimizers.append(optimizer)
-    
+
     # Freeze to update layer
     for layer_name in network_config['config'].get('freezing_layer', []):
         layers = layer_name.split('.')
         model = deepnet.network.init.get_process(layers[0])
         deepnet.utils.get_field(model, layers[1:]).disable_update()
-
 
     # Save variables
     with open(os.path.join(param_dir, 'args.json'), 'w+') as fp:
