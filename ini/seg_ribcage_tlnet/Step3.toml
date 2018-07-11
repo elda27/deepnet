@@ -31,6 +31,7 @@ lw_code = 6.0
 [[process]]
 label  = "CAE"
 type   = "network.cae"
+update = "loss"
 
 # Arguments
 n_dim = "${hyper_parameter.n_dim}"
@@ -43,6 +44,7 @@ n_layers = "${hyper_parameter.n_layers}"
 [[process]]
 label = "Segnet"
 type = "network.tl-net.segnet"
+update = "loss"
 
 n_dim = "${hyper_parameter.n_dim}"
 in_channel = 1
