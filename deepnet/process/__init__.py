@@ -239,6 +239,14 @@ def reduce(*input, operation='+', weights=None):
 
     return y
 
+@register_process()
+def expand_dims(*input, axis=1):
+    output = []
+    for i in input:
+        xp = chainer.cuda.get_array_module(i)
+        output.append(xp.expand_dims(i, axis=axis))
+    return output
+
 @register_process('loss.constrain_kernel')
 def constrain_kernel(network):
     n_kernels = 0
