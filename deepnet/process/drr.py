@@ -1,9 +1,8 @@
 import numpy as np
 import pydrr
 import pydrr.utils as utils
-import deepnet.utils
 
-class DrrGenerator:
+class VolumeProjector:
     def __init__(self, 
         reverse_spacing = True, 
         SOD = 1800,

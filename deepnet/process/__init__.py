@@ -3,16 +3,21 @@ import chainer.functions as F
 from chainer import cuda
 import math
 import numpy as np
+
 NO_CUPY = False
 try:
     import cupy as cp
 except ImportError:
     NO_CUPY = True
     pass
+
+import random
+
 import functools
 from itertools import cycle
 
 from deepnet import utils
+from deepnet.process import drr, data_augmentation
 
 _registered_process = {
     'chainer.sigmoid': F.sigmoid,
@@ -22,6 +27,7 @@ _registered_process = {
     'chainer.sigmoid_cross_entropy': F.sigmoid_cross_entropy,
     'chainer.softmax_cross_entropy': F.softmax_cross_entropy,
     'chainer.batch_l2_norm_squared': F.batch_l2_norm_squared,
+    'HU2Myu': drr.pydrr.utils.HU2Myu,
 }
 
 def register_process(name = None):
@@ -240,6 +246,64 @@ def reduce(*input, operation='+', weights=None):
     return y
 
 @register_process()
+def volume_rendering(
+    volume, spacing, case_name = None, 
+    hu_volume=True, pose=[], **kwargs
+    ):
+
+    if len(pose) == 0:
+        pose.append([0, 0, 0])
+
+    projector = drr.VolumeProjector(**kwargs)
+
+    cpu_volume = utils.unwrapped(volume) # :TODO: Support cupy to pycuda translation.
+    if hu_volume:
+        cpu_volume = drr.pydrr.utils.HU2Myu(cpu_volume, 0.02)
+
+    if cpu_volume.ndim >= 4:
+        images = []
+        for i in range(len(cpu_volume)):
+            i_volume = cpu_volume[i]
+            images.append(projector(i_volume, spacing[i], case_name[i] if case_name is not None else None))
+        return images
+    else:
+        return projector(cpu_volume, spacing, case_name)
+
+@register_process()
+def random_transform(
+    *input,
+    rotate=(-10, 10), 
+    translate=(-10, 10),
+    scale=(-0.1, 0.1),
+    inverse=(False, False, False),
+    shear=(-0.2, 0.2),
+    ):
+
+    def gen_rand():
+        transrot = [0, 0, 0, 0, 0, 0]
+        scale_mat = np.eye(4, 4)
+        shear_mat = np.eye(4, 4)
+        for i in range(3):
+            scale_mat[i, i] = random.uniform(scale[0], scale[1])
+            transrot[i + 0] = random.uniform(rotate[0], rotate[1])
+            transrot[i + 3] = random.uniform(translate[0], translate[1])
+            for j in range(3):
+                if i == j:
+                    continue
+                shear_mat[i, j] = random.uniform(shear[0], shear[1])
+
+        T = drr.pydrr.utils.convertTransRotTo4x4(transrot)
+        T = np.dot(shear_mat, np.dot(scale_mat, T))
+
+        return T
+
+    outputs = []
+    for image in input:
+        data = image
+        if isinstance(data, chainer.Variable):
+            data = image.data
+        outputs.append(chainer.Variable([ data_augmentation.affine_transform(d, gen_rand()) for d in data ]))
+    return outputs
 def expand_dims(*input, axis=1):
     output = []
     for i in input:
@@ -292,3 +356,4 @@ def _expand_background(labels):
 def _make_overlap(labels):
     labels = _expand_background(labels)
     return F.argmax(labels, axis=1)
+
