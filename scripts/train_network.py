@@ -41,7 +41,10 @@ def main():
     valid_dataset = deepnet.utils.dataset.GeneralDataset(dataset_config, valid_index)
 
     # Setup directories
-    log_dir = log_util.get_training_log_dir(args.log_root_dir, args.log_index, args.step_index, opt_name=dataset_config['config'].get('exp_name'))
+    log_dir = log_util.get_training_log_dir(
+        args.log_root_dir, args.log_index, args.step_index, 
+        opt_name=dataset_config['config'].get('exp_name') if args.exp_name is None else args.exp_name
+        )
 
     visualize_dir = os.path.join(log_dir, 'visualize_step{}'.format(args.step_index))
     archive_dir = os.path.join(log_dir, 'model_step{}'.format(args.step_index))
@@ -144,6 +147,10 @@ def build_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu', type=int, default=0, help='gpu id')
     parser.add_argument('--batch-size', type=int, default=5, help='batch size')
+
+    parser.add_argument('--exp-name', type=str, default=None, help='Experiments name.'
+        'If None, this value will be exp_name in the dataset config.'
+        )
 
     parser.add_argument('--dataset-config', type=str, required=True, help='A dataset configuraiton written by extended toml format.')
     parser.add_argument('--network-config', type=str, required=True, help='A network configuraiton written by extended toml format.')
