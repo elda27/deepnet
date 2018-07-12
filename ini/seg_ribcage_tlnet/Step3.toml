@@ -25,7 +25,7 @@ n_layers = 5
 
 # loss weights
 lw_sigmoid = 2.0
-lw_softmax = 1.0
+lw_softmax = 0.5
 lw_code = 6.0
 
 [[process]]
@@ -61,10 +61,33 @@ from_step = 2
 
 
 # Network declaration
+## Make mask image
 [[network]]
-input=["image", "label"]
+input   = "body_bone_image"
+process = "binary"
+output  = "body_bone_label"
+
+threshold = "${hyper_parameter.threshold}"
+
+## Apply mask image
+[[network]]
+input = ["image", "body_bone_label"]
+process = "reduce"
+output = "masked_image"
+operation = "*"
+
+## Copy to gpu
+[[network]]
+input=["masked_image", "label"]
 process="to_gpu"
-output=["gpu_image", "gpu_label"]
+output=["gpu_image_tmp", "gpu_label"]
+
+## Expand dims
+[[network]]
+input= ["gpu_image_tmp"]
+process="expand_dims"
+output=["gpu_image"]
+axis=1
 
 ## Segmentation
 [[network]]

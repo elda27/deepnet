@@ -38,15 +38,15 @@ threshold = "${hyper_parameter.threshold}"
 # Input image is two dimensional but the shape of image must be (N, C, H, W).
 # (N is batch size and will automatically concatenate on to_gpu)
 [[network]]
-input=  "image"
+input=  ["image", "label_bin"]
 process="expand_dims"
-output= "image_expanded"
+output= ["image_expanded", "label_bin_expanded"]
 axis=1
 
 [[network]]
-input=["image_expanded", "label_bin"]
+input=["image_expanded", "label_bin_expanded"]
 process="to_gpu"
-output=["gpu_image", "gpu_label_bin"]
+output=["gpu_image", "gpu_label"]
 
 # Predict label by unet
 [[network]]
