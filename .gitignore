@@ -9,3 +9,6 @@ log/
 *.nc
 *.png
 *.npy
+update_scallop.bat
+train_ribcage_tlnet_use_mask.sh
+train_ribcage_tlnet.sh
