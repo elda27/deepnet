@@ -154,7 +154,7 @@ def map_index_label(img, colors=colors):
     
     return np.transpose(result, (1, 0, 2, 3))
 
-@register_process
+@register_process()
 def map_index_label_2d(img, colors=colors):
     assert img.ndim == 2, 'Actual: {} (Shape: {})'.format(img.ndim, img.shape)
 
