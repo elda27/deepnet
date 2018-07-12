@@ -87,9 +87,10 @@ class Visualizer:
 
 @register_visualizer('image_write')
 class ImageWriter(Visualizer):
-    def __init__(self, output_filename, num_images, image_names):
+    def __init__(self, output_filename, num_images, image_names, spacing='spacing'):
         self.num_images = num_images
         self.image_names = image_names
+        self.spacing = spacing
         super().__init__(output_filename)
 
     def render(self, variables):
@@ -113,8 +114,9 @@ class ImageWriter(Visualizer):
         for name, images in figs.items():
             for i, image in enumerate(images):
                 spacing = None
-                if 'spacing' in self.variables:
-                    spacing = self.variables['spacing'][i]
+                if self.spacing in self.variables:
+                    spacings = self.variables[self.spacing]
+                    spacing = spacings[i % len(spacings)]
                     if len(spacing) < image.ndim:
                         spacing = tuple(spacing) + (1,) * (image.ndim - len(spacing))
 

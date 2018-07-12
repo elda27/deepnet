@@ -8,7 +8,7 @@ logging = [
   '__train_iteration__', 
   'train.loss_sigmoid', 'valid.loss_sigmoid',
   'train.loss_softmax', 'valid.loss_softmax',
-  'train.loss_euclid', 'valid.loss_euclid',
+  #'train.loss_euclid', 'valid.loss_euclid',
   'train.loss', 'valid.loss'
 ]
 
@@ -40,6 +40,7 @@ n_layers = "${hyper_parameter.n_layers}"
 label = "Segnet"
 type = "network.tl-net.segnet"
 decoder = "CAE.decoder"
+update="loss"
 
 n_dim = "${hyper_parameter.n_dim}"
 in_channel = 1
@@ -58,7 +59,7 @@ output=["gpu_image_tmp", "gpu_label"]
 ## Expand dim for intensity image
 [[network]]
 input="gpu_image_tmp"
-process="chainer.expand_dims"
+process="expand_dims"
 output="gpu_image"
 axis=1
 
@@ -97,18 +98,18 @@ output="loss_softmax"
 normalize=false
 test=false
 
-[[network]]
-input=[ "gpu_pred_label", "gpu_label" ]
-process="loss.euclidean_distance"
-output="loss_euclid"
-test=false
+#[[network]]
+#input=[ "gpu_pred_label", "gpu_label" ]
+#process="loss.euclidean_distance"
+#output="loss_euclid"
+#test=false
 
 [[network]]
-input = ["loss_sigmoid", "loss_softmax", "loss_euclid"]
+input = ["loss_sigmoid", "loss_softmax"]
 output = "loss"
 process = "reduce"
 operation = "+"
-weights = [ 1.0, 1.0, 1.0 ]
+weights = [ 1.0, 1.0]
 test = false
 
 ## Index to Color label

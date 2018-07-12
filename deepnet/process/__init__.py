@@ -214,11 +214,11 @@ def to_gpu(*input_list):
         if isinstance(input_, list):
             #input_ = [ F.expand_dims(chainer.Variable(i), axis=0) for i in input_ ]
             #input_ = F.concat(input_, axis=0)
-            input_ = chainer.Variable(np.concatenate([ np.expand_dims(i, axis=0) for i in input_ ], axis=0))
+            input_ = chainer.Variable(np.concatenate([ np.expand_dims(i.astype(np.float32), axis=0) for i in input_ ], axis=0))
         elif isinstance(input_, chainer.Variable):
             input_ = F.copy(input_, -1)
         else:
-            input_ = chainer.Variable(input_)
+            input_ = chainer.Variable(input_.astype(np.float32))
         input_.to_gpu()
         output_list.append(input_)
     return output_list
@@ -304,6 +304,12 @@ def random_transform(
             data = image.data
         outputs.append(chainer.Variable([ data_augmentation.affine_transform(d, gen_rand()) for d in data ]))
     return outputs
+def expand_dims(*input, axis=1):
+    output = []
+    for i in input:
+        xp = chainer.cuda.get_array_module(i)
+        output.append(xp.expand_dims(i, axis=axis))
+    return output
 
 @register_process('loss.constrain_kernel')
 def constrain_kernel(network):

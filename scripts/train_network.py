@@ -41,7 +41,10 @@ def main():
     valid_dataset = deepnet.utils.dataset.GeneralDataset(dataset_config, valid_index)
 
     # Setup directories
-    log_dir = log_util.get_training_log_dir(args.log_root_dir, args.log_index, args.step_index, opt_name=dataset_config['config'].get('exp_name'))
+    log_dir = log_util.get_training_log_dir(
+        args.log_root_dir, args.log_index, args.step_index, 
+        opt_name=dataset_config['config'].get('exp_name') if args.exp_name is None else args.exp_name
+        )
 
     visualize_dir = os.path.join(log_dir, 'visualize_step{}'.format(args.step_index))
     archive_dir = os.path.join(log_dir, 'model_step{}'.format(args.step_index))
@@ -65,6 +68,9 @@ def main():
     network_config = deepnet.config.expand_variable(network_config)
     network_manager, visualizers = deepnet.network.init.build_networks(network_config)
 
+    # Initialize network
+    deepnet.network.init.initialize_networks(log_dir, args.step_index, network_config)
+
     # Setup logger
     logger = [ 
         deepnet.utils.logger.CsvLogger(
@@ -83,13 +89,12 @@ def main():
             model.to_gpu()
         optimizer.setup(model)
     optimizers.append(optimizer)
-    
+
     # Freeze to update layer
     for layer_name in network_config['config'].get('freezing_layer', []):
         layers = layer_name.split('.')
         model = deepnet.network.init.get_process(layers[0])
         deepnet.utils.get_field(model, layers[1:]).disable_update()
-
 
     # Save variables
     with open(os.path.join(param_dir, 'args.json'), 'w+') as fp:
@@ -142,6 +147,10 @@ def build_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu', type=int, default=0, help='gpu id')
     parser.add_argument('--batch-size', type=int, default=5, help='batch size')
+
+    parser.add_argument('--exp-name', type=str, default=None, help='Experiments name.'
+        'If None, this value will be exp_name in the dataset config.'
+        )
 
     parser.add_argument('--dataset-config', type=str, required=True, help='A dataset configuraiton written by extended toml format.')
     parser.add_argument('--network-config', type=str, required=True, help='A network configuraiton written by extended toml format.')
