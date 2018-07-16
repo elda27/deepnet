@@ -272,38 +272,24 @@ def volume_rendering(
 @register_process()
 def random_transform(
     *input,
-    rotate=(-10, 10), 
-    translate=(-10, 10),
-    scale=(-0.1, 0.1),
-    inverse=(False, False, False),
-    shear=(-0.2, 0.2),
+    mode='image',
+    rotation=0.0,    # [deg]
+    translation=0.0, # [%]
+    zoom=0.0,        # [%]
+    intensity=0.0,   # [intensity]
     ):
-
-    def gen_rand():
-        transrot = [0, 0, 0, 0, 0, 0]
-        scale_mat = np.eye(4, 4)
-        shear_mat = np.eye(4, 4)
-        for i in range(3):
-            scale_mat[i, i] = random.uniform(scale[0], scale[1])
-            transrot[i + 0] = random.uniform(rotate[0], rotate[1])
-            transrot[i + 3] = random.uniform(translate[0], translate[1])
-            for j in range(3):
-                if i == j:
-                    continue
-                shear_mat[i, j] = random.uniform(shear[0], shear[1])
-
-        T = drr.pydrr.utils.convertTransRotTo4x4(transrot)
-        T = np.dot(shear_mat, np.dot(scale_mat, T))
-
-        return T
 
     outputs = []
     for image in input:
-        data = image
-        if isinstance(data, chainer.Variable):
-            data = image.data
-        outputs.append(chainer.Variable([ data_augmentation.affine_transform(d, gen_rand()) for d in data ]))
+        input_shape = image.shape
+        data_augmentation.augmentations[mode](
+            image,
+            rotation, translation, zoom,
+            intensity, 
+        )
     return outputs
+
+@register_process()
 def expand_dims(*input, axis=1):
     output = []
     for i in input:
