@@ -15,7 +15,7 @@ optimizing_loss = ['loss_unet']
 [hyper_parameter]
 n_input_channel = 1
 n_class = 1
-threshold = 1
+threshold = 0
 
 [[process]]
 label  = "Predictor"
@@ -35,8 +35,16 @@ output  = "label_bin"
 
 threshold = "${hyper_parameter.threshold}"
 
-# Input image is two dimensional but the shape of image must be (N, C, H, W).
-# (N is batch size and will automatically concatenate on to_gpu)
+## Data augmentation
+#[[network]]
+#input  = ["image", "label_bin"]
+#process= "random_transform"
+#output = ["aug_image", "aug_label_bin"]
+#rotation = 5
+#translation = 10
+
+## Input image is two dimensional but the shape of image must be (N, C, H, W).
+## (N is batch size and will automatically concatenate on to_gpu)
 [[network]]
 input=  ["image", "label_bin"]
 process="expand_dims"
@@ -48,7 +56,7 @@ input=["image_expanded", "label_bin_expanded"]
 process="to_gpu"
 output=["gpu_image", "gpu_label"]
 
-# Predict label by unet
+## Predict label by unet
 [[network]]
 input="gpu_image"
 label="Predictor"
