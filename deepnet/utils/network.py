@@ -159,7 +159,7 @@ class NetworkManager:
             node.update()
 
     def __call__(self, mode='train', **inputs):
-        assert all((name in inputs for name in self.input_list)), \
+        assert all((name in inputs for name in self.input_list)) or mode == 'test', \
             'Input requirement is not satisfied. (Inputs: {}, Input requirement: {}])'.format(list(inputs.keys()), self.input_list)
         
         self.variables = {}
