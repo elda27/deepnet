@@ -17,7 +17,7 @@ n_channel = 3
 
 
 [[process]]
-label  = "Predictor"
+label  = "CAE"
 type   = "network.cae"
 update = "loss_euclidean"
 
@@ -39,7 +39,7 @@ output="gpu_noisy_image"
 
 [[network]]
 input="gpu_noisy_image"
-process="Predictor"
+process="CAE"
 label="CAE"
 output="gpu_reconstruct_image"
 
