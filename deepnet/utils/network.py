@@ -63,7 +63,7 @@ class NetworkNode:
         return all(self.is_already_.values())
     
     def is_iterable(self):
-        return self.iterate_from_node is not None:
+        return self.iterate_from_node is not None
 
     def set_callback(self, callback):
         self.callback = callback
