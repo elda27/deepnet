@@ -5,10 +5,18 @@ import contextlib
 import test
 import enum
 from collections import OrderedDict
+import networkx as nx
 
 class NetworkNode:
-    def __init__(self, input, output, model, training=True, validation=True, test=True, updatable = False, args=dict()):
+    def __init__(self, 
+        name, 
+        input, output, model, 
+        training=True, validation=True, test=True, 
+        updatable = False, 
+        args=dict()
+        ):
         input_ = input
+        self.name  = name
         self.input = input_ if isinstance(input_, list) else [ input_ ] 
         self.output = output if isinstance(output, list) else [ output ] 
         
@@ -96,10 +104,10 @@ class NetworkManager:
             'test':  InferenceMode.Test, 
         }
         
-    def add(self, node_name, node):
-        assert node_name not in self.network,\
+    def add(self, node):
+        assert node.name not in self.network,\
             'Duplicating label name: {}({})<{}>'.format(node_name, node, str({ key: str(node) for key, node in self.network.items() }))
-        self.network[node_name] = node
+        self.network[node.name] = node
         if node.updatable:
             self.updatable_node.append(node)
 

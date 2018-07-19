@@ -158,9 +158,9 @@ def build_networks(config, step=None):
                 output=network_conf['output'],
                 ))
 
-        network_manager.add(
-            network_conf.pop('label'), 
+        network_manager.add( 
             network.NetworkNode(
+                network_conf.pop('label'),
                 network_conf.pop('input'),
                 network_conf.pop('output'),
                 proc, 
