@@ -36,6 +36,8 @@ def main():
     test_index = deepnet.utils.parse_index_file(args.test_index)
 
     test_dataset = deepnet.utils.dataset.GeneralDataset(dataset_config, test_index)
+    if test_index is None:
+        test_index = test_dataset.case_names
 
     log_dir = deepnet.utils.get_log_dir(args.log_root_dir, args.log_index)
 
@@ -83,12 +85,12 @@ def main():
             raise ValueError('Bad format save image list: {}'.format(string))
         save_image_list[string[:pos]] = string[pos + 1:]
 
-
     # Start inference.
     variables = {}
     encoded_codes_list = []
     index_list = { idx: 0 for idx in test_index }
     test_iterator = chainer.iterators.MultiprocessIterator(test_dataset, args.batch_size, repeat=False, shuffle=False)
+
     with chainer.no_backprop_mode():
         for i, batch in tqdm.tqdm(enumerate(test_iterator), total=len(test_dataset) // args.batch_size):
             variables['__iteration__'] = i
@@ -111,22 +113,22 @@ def save_images(output_dir, variables, save_image_list, index_list):
     for image_name, output_filename in save_image_list.items():
         image = deepnet.utils.unwrapped(variables[image_name])
         spacing = variables['spacing']
-        if image.ndim == 4:
-            for i in range(image.shape[0]):
-                case_name = variables['case_name'][i]
-                variables['__index__'] = index_list[case_name]
-                index_list[case_name] += 1
-                # make output dir
-                current_output_dir = os.path.join(output_dir, case_name)
-                os.makedirs(current_output_dir, exist_ok=True)
-                
-                # save images
-                current_output_filename = os.path.join(current_output_dir, output_filename.format(**variables))
-                save_image(current_output_filename, image[i], spacing[i])
-        else:
-            current_output_dir = os.path.join(output_dir, variables['case_name'])
+        #if image.ndim == 4:
+        for i in range(image.shape[0]):
+            case_name = variables['case_name'][i]
+            variables['__index__'] = index_list[case_name]
+            index_list[case_name] += 1
+            # make output dir
+            current_output_dir = os.path.join(output_dir, case_name)
             os.makedirs(current_output_dir, exist_ok=True)
-            save_image(output_filename.format(**variables), image[i], spacing)
+            
+            # save images
+            current_output_filename = os.path.join(current_output_dir, output_filename.format(**variables))
+            save_image(current_output_filename, image[i], spacing[i])
+        #else:
+        #    current_output_dir = os.path.join(output_dir, variables['case_name'])
+        #    os.makedirs(current_output_dir, exist_ok=True)
+        #    save_image(output_filename.format(**variables), image[i], spacing)
 
 def save_image(output_filename, image, spacing):
     if spacing is not None and len(spacing) < image.ndim:
@@ -150,6 +152,7 @@ def build_arguments():
 
     parser.add_argument('--save', type=str, required=True, nargs='+', help='Paired string of variable name and save format. Save format can be used variable such as __index__.')
     parser.add_argument('--output-dir', type=str, default=None)
+    parser.add_argument('--mode', type=str, default='none')
 
     return parser
 

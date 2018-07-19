@@ -1,0 +1,175 @@
+
+[config]
+
+input = [
+  "image", "label"
+]
+
+logging = [
+  '__train_iteration__', 
+  'train.loss_sigmoid', 'valid.loss_sigmoid',
+  'train.loss_softmax', 'valid.loss_softmax',
+  'train.loss', 'valid.loss'
+]
+
+archive_nodes = [ 'CAE', 'Segnet' ]
+optimizing_loss = [ 'loss']
+freezing_layer = [ 'CAE.encoder' ]
+
+[hyper_parameter]
+n_dim = 2
+in_channel = 1
+n_class = 14
+n_encode_dim = 256
+n_layers = 5
+
+# loss weights
+lw_sigmoid = 2.0
+lw_softmax = 1.0
+lw_code = 6.0
+
+[[process]]
+label  = "CAE"
+type   = "network.cae"
+update = "loss"
+
+# Arguments
+n_dim = "${hyper_parameter.n_dim}"
+in_out_channel = "${hyper_parameter.n_class}"
+encode_dim = "${hyper_parameter.n_encode_dim}"
+dropout = "dropout"
+use_batch_norm = true
+n_layers = "${hyper_parameter.n_layers}"
+
+[[process]]
+label = "Segnet"
+type = "network.tl-net.segnet"
+update = "loss"
+
+n_dim = "${hyper_parameter.n_dim}"
+in_channel = 1
+
+[[initialize]]
+mode = "load"
+name = "CAE"
+from_step = 1
+
+[[initialize]]
+mode = "load"
+name = "Segnet"
+from_step = 2
+
+
+# Network declaration
+[[network]]
+input=["image", "label"]
+process="to_gpu"
+output=["gpu_image", "gpu_label"]
+
+## Segmentation
+[[network]]
+input  = "gpu_image"
+process = "Segnet"
+label  = "Segnet"
+output = "gpu_raw_pred_label"
+
+## Encode groudtruth label and pred label
+[[network]]
+input = "gpu_pred_label"
+process = "CAE.encoder"
+output = "gpu_pred_code"
+
+[[network]]
+input = "gpu_label"
+process = "CAE.encoder"
+output = "gpu_groundtruth_code"
+
+## Activated pred label
+[[network]]
+input   = "gpu_raw_pred_label"
+process = "chainer.sigmoid"
+output  = "gpu_pred_label"
+
+## Losses
+[[network]]
+input  ="gpu_label"
+process="cast_type"
+dtype='int32'
+output ="i_gpu_label"
+test = false
+
+[[network]]
+input=[ "gpu_raw_pred_label", "i_gpu_label" ]
+process="chainer.sigmoid_cross_entropy"
+output="loss_sigmoid"
+test=false
+
+[[network]]
+input   = [ "gpu_pred_code", "gpu_groundtruth_code" ]
+process = "loss.euclidean"
+output  = "loss_code"
+
+[[network]]
+input=[ "gpu_pred_label", "gpu_label" ]
+process="loss.total_softmax_cross_entropy"
+output="loss_softmax"
+test=false
+
+
+[[network]]
+input = ["loss_sigmoid", "loss_softmax", 'loss_code']
+output = "loss"
+process = "reduce"
+operation = "+"
+weights = [ 
+  "${hyper_parameter.lw_sigmoid}", 
+  "${hyper_parameter.lw_softmax}", 
+  "${hyper_parameter.lw_code}" 
+  ]
+test = false
+
+## Index to Color label
+[[network]]
+input   = [ "gpu_label", "gpu_pred_label" ]
+process = "make_overlap_label"
+output  = [ "gpu_color_label", "gpu_color_pred_label"]
+train=false
+test=false
+
+## Blend image and label
+[[network]]
+input = ["gpu_image", "gpu_color_label", "gpu_image", "gpu_color_pred_label"]
+process = "blend_image"
+output = ["gpu_blend_label", "gpu_blend_pred_label"]
+train=false
+test=false
+
+
+# Visualize declaration
+[[visualize]]
+type  = "image_write"
+image_names = [ 
+  "gpu_image", "gpu_pred_label", "gpu_label" 
+  ]
+output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__name__}_{__index__}.mhd'
+num_images = 3
+
+[[visualize]]
+type = "tile_image_visualizer"
+output_filename = "${visualize_dir}/{__train_iteration__:08d}_tile.png"
+tile_shape = [5, 5]
+block_images =  [ 
+  "gpu_image", "gpu_color_label",      "gpu_blend_label",
+  "gpu_image", "gpu_color_pred_label", "gpu_blend_pred_label",
+  ]
+block_shape = [2, 3]
+
+## Nch image visualizer
+[[visualize]]
+type = "nch_visualizer"
+output_filename = "${visualize_dir}/{__train_iteration__:08d}_nch_tile.png"
+num_rows = 5
+n_ch = "${hyper_parameter.n_class}"
+n_ch_images = ["gpu_label", "gpu_pred_label"]
+overlap_images = [ "gpu_blend_label", "gpu_blend_pred_label" ]
+subtract = [ ['gpu_label', 'gpu_pred_label'] ]

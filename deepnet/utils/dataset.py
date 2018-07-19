@@ -148,6 +148,9 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
         self.case_names = config['config']['case_names'] if 'case_names' in config['config'] else None 
         self.stage_inputs = []
 
+        if indices is None:
+            indices = self.case_names
+
         for _, inputs in sorted(groups.items(), key=lambda x:x[0]):
             stage_input = {}
             for input_ in inputs:

@@ -186,8 +186,8 @@ def computeMetrics(truth_vars, pred_vars, metrics, num_separate = 20):
 
     result_metrics = {}
     for i, thresh in enumerate(thresholds):
-        truth_bin_labels = truth_labels > 0
-        pred_bin_labels = pred_labels > thresh
+        truth_bin_labels = xp.squeeze(truth_labels > 0)
+        pred_bin_labels = xp.squeeze(pred_labels > thresh)
         for metric_name in metrics:
             _metrics = RegistedMetrics[metric_name](truth_bin_labels, pred_bin_labels, axes=tuple(i for i in range(2, truth_bin_labels.ndim)))
             for key, values in _metrics.items():
@@ -206,7 +206,7 @@ def computeMetrics(truth_vars, pred_vars, metrics, num_separate = 20):
 @register_metric('Dice')
 def calcDice(im1, im2, axes):
     if im1.shape != im2.shape:
-        raise ValueError("Shape mismatch: im1 and im2 must have the same shape.")
+        raise ValueError("Shape mismatch: im1 and im2 must have the same shape. {} != {}".format(im1.shape, im2.shape))
 
     im_sum = xp.sum(im1, axis=axes) + xp.sum(im2, axis=axes)
 
