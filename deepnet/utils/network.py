@@ -6,6 +6,8 @@ import test
 import enum
 from collections import OrderedDict
 import networkx as nx
+import abc
+import types
 
 class NetworkNode:
     def __init__(self, 
@@ -19,7 +21,7 @@ class NetworkNode:
         self.name  = name
         self.input = input_ if isinstance(input_, list) else [ input_ ] 
         self.output = output if isinstance(output, list) else [ output ] 
-        self.iterate_from_node = iterate_from
+        self.iteration_from_node = iterate_from
         
         assert all([isinstance(var, str) for var in self.input]) , 'Input must be string: {}'.format(self.input)
         assert all([isinstance(var, str) for var in self.output]), 'Output must be string: {}'.format(self.output)
@@ -63,7 +65,7 @@ class NetworkNode:
         return all(self.is_already_.values())
     
     def is_iterable(self):
-        return self.iterate_from_node is not None:
+        return self.iteration_from_node is not None
 
     def set_callback(self, callback):
         self.callback = callback
@@ -103,29 +105,85 @@ class NetworkWalker:
         for node in self.network.values():
             node.clear_state(clear_callback)
 
+class ControlNode:
+    __metaclass__ = abc.ABCMeta
+    def __init__(self):
+        pass
+
+    @abc.abstractmethod
+    def __call__(self, network, ):
+        raise NotImplementedError()
+
+class IteratingNode(NetworkNode, ControlNode):
+    def __init__(self, start_node, walker):
+        NetworkNode.__init__(
+            None, start_node.input, start_node.output, start_node.model,
+            training=start_node.training,
+            validation=start_node.validation,
+            test=start_node.test
+        )
+        self.start_node = start_node
+        self.walker = walker
+
+    def __call__(self, variables):
+        path = nx.all_simple_paths(self.network, source=start_node, targer=node.iteration_from_node)[1:]
+        for input_ in self.start_node:
+            variables.update(dict(zip(start_node.input, input_)))
+            for node in path:
+                output, variables = self.walker.invoke(variables)
+                variables.update(dict(zip(node.output, output)))
+            output = { out: variables[out] for out in self.start_node.output }
+            self.start_node.insert_iteration(**output)
+        return None
+
 class NetworkWalker_:
-    def __init__(self, network):
+    def __init__(self, network, mode):
         self.network = network
+        self.mode = mode
+        self.iteration_stack = []
         clear_network_state(self.network)
 
-    def walk_impl(self, node):
-        next_nodes = []
-        iteration_edges = []
-        for next_node_name in g[node.name]:
-            next_node = g.nodes[next_node_name]['node']
+    def walk(self, start_node_names):
+        already_nodes = []
+        for node_name in start_node_names:
+            node = self.network.nodes[start_node_name]['node']
+            if node.is_iterable(): # Iterable nodes found.
+                already_nodes(IteratingNode())
+            else:
+                already_nodes.extend(self.search_next_node(node))
+
+        for node in already_nodes:
+            output = self.invoke(node)
+
+        return already_nodes
+
+    def search_next_node(self, node):
+        already_nodes = []
+        for next_node_name in g[node.name]: # Iterate about children nodes.
             edge = self.network.edges[node.name, next_node_name]
             if 'input' in edge:  # If true, this egde is the flow of egde.
+                next_node = g.nodes[next_node_name]['node']
                 next_node.ready(edge['input'])
                 if next_node.is_already():
-                    next_nodes.append(next_node)
-            elif 'iteration' in edge:
-                iteration_edges.append(edge)
+                    already_nodes.append(next_node)
+        return already_nodes
 
-        for edge in iteration_edges:
-            # :TODO: Append condition check for looping process.
-            raise NotImplementedError()
+    def invoke(self, node, variables):
+        if self.mode == InferenceMode.Validation and not node.validation: # If not running on validation  
+            return
+        elif self.mode == InferenceMode.Train and not node.training: # If not running on training
+            return
+        elif self.mode == InferenceMode.Test and not node.test: # If not running on test
+            return
 
-        return next_nodes
+        in_values = [ variables[var] for var in node.input ]
+        out = node(*in_values, **node.args)
+        if isinstance(out, types.GeneratorType):
+            assert node.is_iterable(), "This node is not iterable but using process is corutine or generator function."
+        elif not isinstance(out, (list, tuple)):
+            out = [ out ]
+
+        return out, variables
 
 class NetworkBuilder:
     def __init__(self, graph):
@@ -157,7 +215,6 @@ class NetworkBuilder:
             
         for node in self.already_nodes:
             self.build(node.output, source_node = node.name)
-
 
 
 class InferenceMode(enum.Enum):
