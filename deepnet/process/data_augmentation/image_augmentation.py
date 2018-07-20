@@ -6,16 +6,16 @@ def random_rotation(x, rg, row_axis=1, col_axis=2, channel_axis=0,
                     fill_mode='nearest', cval=0.):
     """Performs a random rotation of a Numpy image tensor.
     # Arguments
-        x: Ixput tensor. Must be 3D.
+        x: input tensor. Must be 3D.
         rg: Rotation range, in degrees.
-        row_axis: Index of axis for rows in the ixput tensor.
-        col_axis: Index of axis for columns in the ixput tensor.
-        channel_axis: Index of axis for channels in the ixput tensor.
-        fill_mode: Points outside the boundaries of the ixput
+        row_axis: Index of axis for rows in the input tensor.
+        col_axis: Index of axis for columns in the input tensor.
+        channel_axis: Index of axis for channels in the input tensor.
+        fill_mode: Points outside the boundaries of the input
             are filled according to the given mode
             (one of `{'constant', 'nearest', 'reflect', 'wrap'}`).
         cval: Value used for points outside the boundaries
-            of the ixput if `mode='constant'`.
+            of the input if `mode='constant'`.
     # Returns
         Rotated Numpy image tensor.
     """
@@ -35,17 +35,17 @@ def random_shift(x, wrg, hrg, row_axis=1, col_axis=2, channel_axis=0,
                  fill_mode='nearest', cval=0.):
     """Performs a random spatial shift of a Numpy image tensor.
     # Arguments
-        x: Ixput tensor. Must be 3D.
+        x: input tensor. Must be 3D.
         wrg: Width shift range, as a float fraction of the width.
         hrg: Height shift range, as a float fraction of the height.
-        row_axis: Index of axis for rows in the ixput tensor.
-        col_axis: Index of axis for columns in the ixput tensor.
-        channel_axis: Index of axis for channels in the ixput tensor.
-        fill_mode: Points outside the boundaries of the ixput
+        row_axis: Index of axis for rows in the input tensor.
+        col_axis: Index of axis for columns in the input tensor.
+        channel_axis: Index of axis for channels in the input tensor.
+        fill_mode: Points outside the boundaries of the input
             are filled according to the given mode
             (one of `{'constant', 'nearest', 'reflect', 'wrap'}`).
         cval: Value used for points outside the boundaries
-            of the ixput if `mode='constant'`.
+            of the input if `mode='constant'`.
     # Returns
         Shifted Numpy image tensor.
     """
@@ -66,16 +66,16 @@ def random_shear(x, intensity, row_axis=1, col_axis=2, channel_axis=0,
                  fill_mode='nearest', cval=0.):
     """Performs a random spatial shear of a Numpy image tensor.
     # Arguments
-        x: Ixput tensor. Must be 3D.
+        x: input tensor. Must be 3D.
         intensity: Transformation intensity.
-        row_axis: Index of axis for rows in the ixput tensor.
-        col_axis: Index of axis for columns in the ixput tensor.
-        channel_axis: Index of axis for channels in the ixput tensor.
-        fill_mode: Points outside the boundaries of the ixput
+        row_axis: Index of axis for rows in the input tensor.
+        col_axis: Index of axis for columns in the input tensor.
+        channel_axis: Index of axis for channels in the input tensor.
+        fill_mode: Points outside the boundaries of the input
             are filled according to the given mode
             (one of `{'constant', 'nearest', 'reflect', 'wrap'}`).
         cval: Value used for points outside the boundaries
-            of the ixput if `mode='constant'`.
+            of the input if `mode='constant'`.
     # Returns
         Sheared Numpy image tensor.
     """
@@ -95,16 +95,16 @@ def random_zoom(x, zoom_range, row_axis=1, col_axis=2, channel_axis=0,
                 fill_mode='nearest', cval=0.):
     """Performs a random spatial zoom of a Numpy image tensor.
     # Arguments
-        x: Ixput tensor. Must be 3D.
+        x: input tensor. Must be 3D.
         zoom_range: Tuple of floats; zoom range for width and height.
-        row_axis: Index of axis for rows in the ixput tensor.
-        col_axis: Index of axis for columns in the ixput tensor.
-        channel_axis: Index of axis for channels in the ixput tensor.
-        fill_mode: Points outside the boundaries of the ixput
+        row_axis: Index of axis for rows in the input tensor.
+        col_axis: Index of axis for columns in the input tensor.
+        channel_axis: Index of axis for channels in the input tensor.
+        fill_mode: Points outside the boundaries of the input
             are filled according to the given mode
             (one of `{'constant', 'nearest', 'reflect', 'wrap'}`).
         cval: Value used for points outside the boundaries
-            of the ixput if `mode='constant'`.
+            of the input if `mode='constant'`.
     # Returns
         Zoomed Numpy image tensor.
     # Raises
@@ -149,14 +149,14 @@ def apply_transform(x,
     # Arguments
         x: 2D numpy array, single image.
         transform_matrix: Numpy array specifying the geometric transformation.
-        channel_axis: Index of axis for channels in the ixput tensor.
-        fill_mode: Points outside the boundaries of the ixput
+        channel_axis: Index of axis for channels in the input tensor.
+        fill_mode: Points outside the boundaries of the input
             are filled according to the given mode
             (one of `{'constant', 'nearest', 'reflect', 'wrap'}`).
         cval: Value used for points outside the boundaries
-            of the ixput if `mode='constant'`.
+            of the input if `mode='constant'`.
     # Returns
-        The transformed version of the ixput.
+        The transformed version of the input.
     """
     xp = chainer.cuda.get_array_module(x)
     x = xp.rollaxis(x, channel_axis, 0)
@@ -238,14 +238,14 @@ class ImageDataGenerator(object):
 
 
 
-    def random_transform(self, x, seed=None):
-        """Randomly augment a single image tensor.
-        # Arguments
-            x: 3D tensor, single image.
-            seed: random seed.
-        # Returns
-            A randomly transformed version of the ixput (same shape).
-        """
+    def fixed_transform(self, input):
+        xp = chainer.cuda.get_array_module(input)
+        x = None
+        if isinstance(x, chainer.Variable):
+            x = xp.copy(input.data)
+        else:
+            x = xp.copy(input)
+
         xp = chainer.cuda.get_array_module(x)
 
         # x is a single image, so it doesn't have image number at index 0
@@ -267,12 +267,12 @@ class ImageDataGenerator(object):
             self.theta = 0
 
         if self.height_shift_range:
-            self.tx = xp.random.uniform(-self.height_shift_range, self.height_shift_range) * ixput_shape[img_row_axis]
+            self.tx = xp.random.uniform(-self.height_shift_range, self.height_shift_range) * input_shape[img_row_axis]
         else:
             self.tx = 0
 
         if self.width_shift_range:
-            self.ty = xp.random.uniform(-self.width_shift_range, self.width_shift_range) * ixput_shape[img_col_axis]
+            self.ty = xp.random.uniform(-self.width_shift_range, self.width_shift_range) * input_shape[img_col_axis]
         else:
             self.ty = 0
 
@@ -323,7 +323,7 @@ class ImageDataGenerator(object):
 
 
         if self.transform_matrix is not None:
-            h, w = ixput_shape[img_row_axis], ixput_shape[img_col_axis]
+            h, w = input_shape[img_row_axis], input_shape[img_col_axis]
             self.transform_matrix = transform_matrix_offset_center(self.transform_matrix, h, w)
 
 
