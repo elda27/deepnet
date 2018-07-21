@@ -75,7 +75,17 @@ def crop(t, shape, n_dim = 2):
         assert left >= 0 and top >= 0 and right < t.shape[2] and bottom < t.shape[3], \
             'Cropping image is less shape than input shape.\nInput shape:{}, Cropping shape:{}, (L,R,T,B):({},{},{},{})'.format(t.shape, shape, left, right, top, bottom)
         return t[:, :, left:right, top:bottom]
-    raise NotImplementedError('3D or Nd cropping is not inmplemented.')
+    if n_dim == 3:
+        left   = (t.shape[2] - shape[2]) // 2
+        top    = (t.shape[3] - shape[3]) // 2
+        near   = (t.shape[4] - shape[4]) // 2
+        right  = left + shape[2]
+        bottom = top  + shape[3]
+        far    = near + shape[4]
+        assert left >= 0 and top >= 0  and near >= 0 and right < t.shape[2] and bottom < t.shape[3] and far < t.shape[4], \
+            'Cropping image is less shape than input shape.\nInput shape:{}, Cropping shape:{}, (L,R,T,B):({},{},{},{})'.format(t.shape, shape, left, right, top, bottom)
+        return t[:, :, left:right, top:bottom, near:far]
+    raise NotImplementedError('Nd cropping is not inmplemented.')
 
 class CBR(chainer.Chain):
     dropout = dict(

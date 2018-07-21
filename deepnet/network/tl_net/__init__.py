@@ -16,6 +16,8 @@ class Segnet(chainer.Chain):
         decoder = None, 
         use_skipping_connection='none'
         ):
+        self.n_dim = n_dim
+        
         super().__init__()
         self.use_skipping_connection = use_skipping_connection
         with self.init_scope():
@@ -43,7 +45,7 @@ class Segnet(chainer.Chain):
         self.decoder.use_skipping_connection = self.use_skipping_connection
 
         h = self.decoder(h, connections=self.encoder.stores)
-        h = utils.crop(h, x.shape)
+        h = utils.crop(h, x.shape, self.n_dim)
         self.stores['decoder'] = h
 
         self.decoder.use_skipping_connection = old_skip_flag
