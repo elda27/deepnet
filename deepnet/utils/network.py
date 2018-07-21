@@ -10,6 +10,7 @@ import abc
 import types
 from datetime import datetime
 import hashlib
+import itertools
 
 def get_unique_label():
     sleep(1e-6)
@@ -112,8 +113,13 @@ class IterableProcessor:
 
 class IteratingNode(NetworkNode, ControlNode):
     def __init__(self, start_node, walker):
+        self.output_node = walker.network.nodes(data='node')[start_node.iteration_from_node]
+        self.output_iteration = self.output_node
         NetworkNode.__init__(
-            self, get_unique_label(), start_node.input, start_node.output, start_node.model,
+            self, get_unique_label(), 
+            start_node.input, 
+            self.output_iteration.output, 
+            start_node.model,
             training=start_node.training,
             validation=start_node.validation,
             test=start_node.test,
@@ -123,22 +129,22 @@ class IteratingNode(NetworkNode, ControlNode):
         self.walker = walker
 
     def __call__(self, *input, **args):
-        path = list(nx.all_simple_paths(
+        path = list(itertools.chain(*nx.all_simple_paths(
             self.walker.network, 
-            source=self.start_node.name, 
+            source=get_unique_label, 
             target=self.start_node.iteration_from_node
-            ))[1:]
-        output_node = self.walker.network[self.start_node.iterate_from]['node']
-        for input_ in self.start_node:
+            )))[1:] # Skip first element because first element create generator object.
+        for input_ in zip(*self.walker.invoke(self.start_node)):
             # Update variables
-            self.walker.variables.update(dict(zip(self.start_node.input, input_)))
-            for node in path:
+            self.walker.variables.update(dict(zip(self.start_node.output, input_)))
+            for node_name in path:
+                node = self.walker.network.nodes[node_name]['node']
                 output = self.walker.invoke(node)
                 if output is None:  # If True, invoked node don't need current inference mode.
                     continue
 
                 self.walker.variables.update(dict(zip(node.output, output)))
-            output = [ self.walker.variables[out] for out in output_node.output ]
+            output = [ self.walker.variables[out] for out in self.output_node.output ]
             self.start_node.model.insert(*output)
         return self.start_node.model.get_output()
 
@@ -183,7 +189,9 @@ class NetworkWalker:
         for node_name in start_node_names:
             node = self.network.nodes[node_name]['node']
             if node.is_iterable(): # Iterable nodes found.
-                already_nodes.append(IteratingNode(node, self))
+                next_node = IteratingNode(node, self)
+                self.network.add_node(next_node.name, node=next_node)
+                already_nodes.append(next_node)
             else:
                 already_nodes.extend(self.search_next_node(node))
 

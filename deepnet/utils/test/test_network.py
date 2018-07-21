@@ -71,7 +71,7 @@ class DummyProcess(network.IterableProcessor):
         self.x = []
 
     def __call__(self, *x):
-        pass
+        return range(10)
 
     def insert(self, x):
         self.x.append(x)
@@ -86,8 +86,11 @@ class DummyProcess(network.IterableProcessor):
             "6",
             [
                 network.NetworkNode("1", ["i1"], ["v1"], dummy_process),
-                network.NetworkNode("2", ["v1"], ["v2"], lambda x: range(10), iterate_from="3"),
-                network.NetworkNode("3", ["v2"], ["v3"], DummyProcess(), iterate_from="3"),
+                network.NetworkNode("2", ["v1"], ["v2"], DummyProcess(), iterate_from="4"),
+                network.NetworkNode("3-1", ["v2"], ["v3-1"], dummy_process),
+                network.NetworkNode("3-2", ["v1"], ["v3-2"], dummy_process),
+                network.NetworkNode("4", ["v3-1", "v3-2"], ["v4"], dummy_process),
+                network.NetworkNode("5", ["v4"], ["o1"], dummy_process),
             ],
             lambda x: any([ i == j for i, j in enumerate(x) ])
         ), # End of definition of the 1st case
@@ -100,7 +103,7 @@ def test_iterable_node(input_list, edge_node_name, network_nodes, comp):
         manager.add(node)
     
     manager(**input_list)
-    assert comp(manager.variables['v3'])
+    assert comp(manager.variables['o1'])
     
     
 
