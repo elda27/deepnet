@@ -114,10 +114,10 @@ class CBR(chainer.Chain):
 
         
 from deepnet.network.init import register_network
-import deepnet.utils.network 
+from deepnet.utils.network import IterableProcessor
 
 @register_network('patch_inference')
-class PatchInferencer(deepnet.utils.network.IterableProcessor):
+class PatchInferencer(IterableProcessor):
     def __init__(self, shape):
         self.patch_shape = shape
         self.index = [0] * len(shape)

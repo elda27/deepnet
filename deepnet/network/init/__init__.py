@@ -126,9 +126,7 @@ def build_networks(config, step=None):
                 continue
 
         if 'label' not in network_conf:
-            sleep(1e-6)
-            now = str(datetime.now()).encode('ascii')
-            network_conf['label'] = hashlib.md5(now).hexdigest()
+            network_conf['label'] = network.get_unique_label()
 
         proc = None
         updatable = False

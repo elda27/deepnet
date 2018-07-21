@@ -89,7 +89,6 @@ def make_overlap_label(*images):
     result_image = []
     for image in images:
         img = utils.unwrapped(image)
-        batch_image = []
         
         index_img = np.argmax(
             np.concatenate((np.ones( (img.shape[0], 1) + img.shape[2:], dtype=img.dtype) * 1e-1, img), axis=1), 

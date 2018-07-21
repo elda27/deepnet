@@ -152,7 +152,7 @@ class Trainer:
         for node_name in self.archive_nodes:
             serializers.save_npz(
                 os.path.join(self.archive_dir, node_name +'_{:08d}.npz'.format(variables['__train_iteration__'])), 
-                self.network.network[node_name].model
+                self.network.get_node(node_name).model
                 )
 
         # Compute mean variables

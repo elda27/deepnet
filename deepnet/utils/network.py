@@ -8,6 +8,13 @@ from collections import OrderedDict
 import networkx as nx
 import abc
 import types
+import datetime
+import hashlib
+
+def get_unique_label():
+    sleep(1e-6)
+    now = str(datetime.now()).encode('ascii')
+    return hashlib.md5(now).hexdigest()
 
 class NetworkNode:
     def __init__(self, 
@@ -48,7 +55,7 @@ class NetworkNode:
         return str(dict(input=self.input, output=self.output))
 
     @property
-    def updatable():
+    def updatable(self):
         return self.update_variable is not None
 
     def update(self):
@@ -57,6 +64,9 @@ class NetworkNode:
         self.model.cleargrads()
 
     def ready(self, name):
+        if name not in self.is_already_:
+            return
+
         self.is_already_[name] = True
         if self.is_already() and self.callback is not None:
             self.callback()
@@ -76,7 +86,9 @@ class NetworkNode:
         self.is_already_ = { i: False for i in self.input }
 
 def clear_network_state(network, clear_callback = True):
-        for node in network.nodes(data='node').values():
+        for _, node in network.nodes(data='node'):
+            if node is None:
+                continue
             node.clear_state(clear_callback)
 
 class ControlNode:
@@ -88,7 +100,7 @@ class ControlNode:
     def __call__(self, network, ):
         raise NotImplementedError()
 
-class IteratableProcessor:
+class IterableProcessor:
     __metaclass__ = abc.ABCMeta
     @abc.abstractmethod
     def insert(self, *args):
@@ -101,7 +113,7 @@ class IteratableProcessor:
 class IteratingNode(NetworkNode, ControlNode):
     def __init__(self, start_node, walker):
         NetworkNode.__init__(
-            None, start_node.input, start_node.output, start_node.model,
+            self, get_unique_label(), start_node.input, start_node.output, start_node.model,
             training=start_node.training,
             validation=start_node.validation,
             test=start_node.test,
@@ -111,12 +123,16 @@ class IteratingNode(NetworkNode, ControlNode):
         self.walker = walker
 
     def __call__(self, *input, **args):
-        path = nx.all_simple_paths(self.walker.network, source=self.start_node.name, target=self.start_node_name.iteration_from_node)[1:]
+        path = nx.all_simple_paths(self.walker.network, source=self.start_node.name, target=self.start_node.iteration_from_node)[1:]
         output_node = self.walker.network[self.start_node.iterate_from]['node']
         for input_ in self.start_node:
+            # Update variables
             self.walker.variables.update(dict(zip(self.start_node.input, input_)))
             for node in path:
                 output = self.walker.invoke(node)
+                if output is None:  # If True, invoked node don't need current inference mode.
+                    continue
+
                 self.walker.variables.update(dict(zip(node.output, output)))
             output = [ self.walker.variables[out] for out in output_node.output ]
             self.start_node.model.insert(*output)
@@ -128,20 +144,33 @@ class NetworkWalker:
         self.mode = mode
         self.iteration_stack = []
         self.variables = variables
-        clear_network_state(self.network)
 
     def update_variables(self, node, values):
+        if values is None:  # If True, invoked process don't need current inference mode.
+            return
+        assert isinstance(values, (tuple, list)), "Output value is not iterable; Node model: {}, Values:{}".format(node.model, values)
         output = { out: value for out, value in zip(node.output, values) }
         self.variables.update(**output)
 
 
-    def start(self, start_nodes):
+    def start(self, inputs):
+        start_nodes = []
+        clear_network_state(self.network)
+        # Search start nodes
+        for _, node in self.network.nodes(data='node'):
+            for name in inputs:
+                node.ready(name)
+            if node.is_already():
+                start_nodes.append(node)
+
+        # Invoke start nodes
         for node in start_nodes:
             output = self.invoke(node)
             self.update_variables(node, output)
         
+        # Trace all path of processing flow.
         next_node_names = [ node.name for node in start_nodes ]
-        while len(next_node_names) == 0:
+        while len(next_node_names) != 0:
             next_nodes = self.walk(next_node_names)
             next_node_names = [ node.name for node in next_nodes ]
 
@@ -166,7 +195,8 @@ class NetworkWalker:
             edge = self.network.edges[node.name, next_node_name]
             if 'input' in edge:  # If true, this egde is the flow of egde.
                 next_node = self.network.nodes[next_node_name]['node']
-                next_node.ready(edge['input'])
+                for i in edge['input']:
+                    next_node.ready(i)
                 if next_node.is_already():
                     already_nodes.append(next_node)
         return already_nodes
@@ -195,30 +225,43 @@ class NetworkBuilder:
         self.graph = graph
         self.start_nodes = []
         self.already_node_names = []
+        clear_network_state(self.graph)
+
+    def ready_node(self, input, node, source):
+        if input not in node.input:
+            return
+
+        node.ready(input)
+
+        if source is None: # If true, source node is input from dataset.
+            return
+        
+        key = (source, node.name)
+        if key in self.graph.edges:
+            nx.get_edge_attributes(self.graph, 'input')[key].append(input)
+        else:
+            self.graph.add_edge(*key, input=[input])
 
     def build(self, input_list, source_node = None):
         already_nodes = []
         
-        clear_network_state(self.graph)
-        for node in self.graph.nodes(data='node').values():
+        for node in [ n for _, n in self.graph.nodes(data='node')]:
             if node.name in self.already_node_names:
                 continue
 
             for input_ in input_list:
-                if input_ in node.input:
-                    node.ready(input_)
-                    self.graph.add_edge(source_node, node.name, input=input_)
-
-            if node.is_iterable(): # If iterable node, setup to loop edge
-                self.graph.add_edge(node.from_node, source_node, iteration=True)
+                self.ready_node(input_, node, source_node)
 
             if node.is_already():
+                if node.is_iterable(): # If iterable node, setup to loop edge
+                    self.graph.add_edge(node.iteration_from_node, node.name, iteration=True)
                 already_nodes.append(node)
 
         if source_node is None:
-            self.already_node_names.extend( [ node.name for node in already_nodes ] )
             self.start_nodes = already_nodes
             
+        self.already_node_names.extend( [ node.name for node in already_nodes ] )
+         
         for node in already_nodes:
             self.build(node.output, source_node = node.name)
 
@@ -239,6 +282,12 @@ class NetworkManager:
             'valid': InferenceMode.Validation, 
             'test':  InferenceMode.Test, 
         }
+
+    def get_node(self, name):
+        return self.network.nodes[name]['node']
+
+    def get_network_dict(self):
+        return dict(self.network.nodes(data='node'))
         
     def add(self, node):
         assert node.name not in self.network,\
@@ -256,7 +305,7 @@ class NetworkManager:
         # Search not found node.
         def search_node(name):
             found_node = None
-            for node in self.network.values(): 
+            for _, node in self.network.nodes(data='node'): 
                 if name in node.output:
                     found_node = node
                     break
@@ -264,15 +313,17 @@ class NetworkManager:
 
         not_reached_node = search_node(not_reached)
 
-        if not_reached_node is None:
+        if not_reached_node is None or isinstance(not_reached_node, tuple):
             return []
 
         found_nodes = []
 
         for name, is_ready in not_reached_node.is_already_.items():
             if not is_ready:
-                found_nodes.append(search_node(name))
-                found_nodes.extend(self.validate_network(name))
+                found_node = search_node(name)
+                if found_node is not None: # If found_node is None, A searching path reached any input.
+                    found_nodes.append(found_node)
+                    found_nodes.extend(self.validate_network(name))
 
         return found_nodes
 
@@ -284,6 +335,7 @@ class NetworkManager:
         assert all((name in inputs for name in self.input_list)) or mode == 'test', \
             'Input requirement is not satisfied. (Inputs: {}, Input requirement: {}])'.format(list(inputs.keys()), self.input_list)
         #assert len(self.network.edges) != 0, "Network is not initialized. you need to invoke build network."
+        assert len(self.network.nodes) > 0, "Network node is empty."
         if len(self.network.edges) == 0:
             self.build_network()
 
@@ -292,7 +344,5 @@ class NetworkManager:
         self.mode = self.mode_list[mode]
 
         walker = NetworkWalker(self.network, self.mode, self.variables)
-        for node in self.start_nodes:
-            output = walker.invoke(node)
-            { node.output }
-
+        walker.start(inputs)
+        

@@ -117,7 +117,7 @@ def main():
                         model= str(node.model),
                         args= { name: str(node.args) for name, arg in node.args.items() }
                     )
-                     for name, node in network_manager.network.items()
+                     for name, node in network_manager.get_network_dict().items()
                 }
         )
         json.dump(json_dict, fp, indent=2)
