@@ -8,7 +8,7 @@ from collections import OrderedDict
 import networkx as nx
 import abc
 import types
-import datetime
+from datetime import datetime
 import hashlib
 
 def get_unique_label():
