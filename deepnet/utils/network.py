@@ -92,15 +92,6 @@ def clear_network_state(network, clear_callback = True):
                 continue
             node.clear_state(clear_callback)
 
-class ControlNode:
-    __metaclass__ = abc.ABCMeta
-    def __init__(self):
-        pass
-
-    @abc.abstractmethod
-    def __call__(self, network, ):
-        raise NotImplementedError()
-
 class IterableProcessor:
     __metaclass__ = abc.ABCMeta
     @abc.abstractmethod
@@ -114,43 +105,6 @@ class IterableProcessor:
     @abc.abstractmethod
     def get_output(self):
         raise NotImplementedError()
-
-class IteratingNode(NetworkNode, ControlNode):
-    def __init__(self, start_node, walker):
-        self.output_node = walker.network.nodes(data='node')[start_node.iteration_from_node]
-        self.output_iteration = self.output_node
-        NetworkNode.__init__(
-            self, get_unique_label(), 
-            start_node.input, 
-            self.output_iteration.output, 
-            start_node.model,
-            training=start_node.training,
-            validation=start_node.validation,
-            test=start_node.test,
-            args=start_node.args
-        )
-        self.start_node = start_node
-        self.walker = walker
-
-    def __call__(self, *input, **args):
-        path = list(itertools.chain(*nx.all_simple_paths(
-            self.walker.network, 
-            source=get_unique_label, 
-            target=self.start_node.iteration_from_node
-            )))[1:] # Skip first element because first element create generator object.
-        for input_ in zip(*self.walker.invoke(self.start_node)):
-            # Update variables
-            self.walker.variables.update(dict(zip(self.start_node.output, input_)))
-            for node_name in path:
-                node = self.walker.network.nodes[node_name]['node']
-                output = self.walker.invoke(node)
-                if output is None:  # If True, invoked node don't need current inference mode.
-                    continue
-
-                self.walker.variables.update(dict(zip(node.output, output)))
-            output = [ self.walker.variables[out] for out in self.output_node.output ]
-            self.start_node.model.insert(*output)
-        return self.start_node.model.get_output()
 
 class IteratingNodeWrapper(NetworkNode):
     def __init__(self, start_node, wrap_node, network):
