@@ -123,7 +123,11 @@ class IteratingNode(NetworkNode, ControlNode):
         self.walker = walker
 
     def __call__(self, *input, **args):
-        path = nx.all_simple_paths(self.walker.network, source=self.start_node.name, target=self.start_node.iteration_from_node)[1:]
+        path = list(nx.all_simple_paths(
+            self.walker.network, 
+            source=self.start_node.name, 
+            target=self.start_node.iteration_from_node
+            ))[1:]
         output_node = self.walker.network[self.start_node.iterate_from]['node']
         for input_ in self.start_node:
             # Update variables
