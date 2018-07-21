@@ -48,7 +48,7 @@ class NetworkNode:
         self.args = args
         self.callback = None
         self.clear_state()
-
+    
     def __call__(self, *args, **kwargs):
         return self.model(*args, **kwargs)
 
@@ -104,6 +104,10 @@ class ControlNode:
 class IterableProcessor:
     __metaclass__ = abc.ABCMeta
     @abc.abstractmethod
+    def next(self):
+        raise NotImplementedError()
+
+    @abc.abstractmethod
     def insert(self, *args):
         raise NotImplementedError()
 
@@ -148,6 +152,38 @@ class IteratingNode(NetworkNode, ControlNode):
             self.start_node.model.insert(*output)
         return self.start_node.model.get_output()
 
+class IteratingNodeWrapper(NetworkNode):
+    def __init__(self, start_node, wrap_node, network):
+        assert issubclass(type(start_node.model), IterableProcessor)
+        self.start_node = start_node
+        self.wrap_node = wrap_node
+        self.network = network
+        super().__init__(
+            wrap_node.name, 
+            wrap_node.input, 
+            wrap_node.output, 
+            wrap_node.model,
+            training=wrap_node.training,
+            validation=wrap_node.validation,
+            test=wrap_node.test,
+            args=wrap_node.args
+        )
+
+    def __call__(self, *args, **kwargs):
+        out = self.wrap_node(*args, **kwargs)
+        if not isinstance(out, (list, tuple)):
+            out = [ out ]
+        self.start_node.model.insert(*out)
+        try:
+            self.start_node.model.next()
+        except StopIteration:
+            nx.set_edge_attributes(
+                self.network, 
+                { (self.wrap_node.name, self.start_node.name) : False}, 
+                name='iteration'
+                )
+        return out
+
 class NetworkWalker:
     def __init__(self, network, mode, variables):
         self.network = network
@@ -188,12 +224,12 @@ class NetworkWalker:
         already_nodes = []
         for node_name in start_node_names:
             node = self.network.nodes[node_name]['node']
-            if node.is_iterable(): # Iterable nodes found.
-                next_node = IteratingNode(node, self)
-                self.network.add_node(next_node.name, node=next_node)
-                already_nodes.append(next_node)
-            else:
-                already_nodes.extend(self.search_next_node(node))
+            # if node.is_iterable(): # Iterable nodes found.
+            #     next_node = IteratingNode(node, self)
+            #     self.network.add_node(next_node.name, node=next_node)
+            #     already_nodes.append(next_node)
+            # else:
+            already_nodes.extend(self.search_next_node(node))
 
         for node in already_nodes:
             output = self.invoke(node)
@@ -203,9 +239,22 @@ class NetworkWalker:
 
     def search_next_node(self, node):
         already_nodes = []
+
+        if (isinstance(node, IteratingNodeWrapper)):
+            edges = self.network.adj[node.name]
+            for dst_name, dst_prop in edges.items():
+                if 'iteration' in dst_prop:
+                    dst_node = self.network.nodes[dst_name]['node']
+                    if dst_prop['iteration']:
+                        already_nodes.append(dst_node)
+                        return already_nodes
+
+                    self.variables.update(dict(zip( node.output, dst_node.model.get_output() ))) # Update variable by iteartion result.
+        
         for next_node_name in self.network[node.name]: # Iterate about children nodes.
             edge = self.network.edges[node.name, next_node_name]
-            if 'input' in edge:  # If true, this egde is the flow of egde.
+            
+            if 'input' in edge:   # If true, this egde is the flow of egde.
                 next_node = self.network.nodes[next_node_name]['node']
                 for i in edge['input']:
                     next_node.ready(i)
@@ -225,9 +274,7 @@ class NetworkWalker:
 
         in_values = [ variables[var] for var in node.input ]
         out = node(*in_values, **node.args)
-        if isinstance(out, types.GeneratorType):
-            assert node.is_iterable(), "This node is not iterable but using process is corutine or generator function."
-        elif not isinstance(out, (list, tuple)):
+        if not isinstance(out, (list, tuple)):
             out = [ out ]
 
         return out
@@ -267,6 +314,10 @@ class NetworkBuilder:
             if node.is_already():
                 if node.is_iterable(): # If iterable node, setup to loop edge
                     self.graph.add_edge(node.iteration_from_node, node.name, iteration=True)
+                    self.graph.add_node(
+                        node.iteration_from_node, 
+                        node=IteratingNodeWrapper(node, self.graph.nodes[node.iteration_from_node]['node'], self.graph)
+                        ) # Replace node for iteration.
                 already_nodes.append(node)
 
         if source_node is None:

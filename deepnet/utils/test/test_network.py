@@ -64,20 +64,25 @@ def test_build_network(input_list, edge_node_name, network_nodes):
 
 
 def dummy_process(*x):
-    return x
+    return [ x[0] ] # Always return value is list object.
 
 class DummyProcess(network.IterableProcessor):
     def __init__(self):
         self.x = []
+        self.generator = iter(range(10))
+        self.next()
 
     def __call__(self, *x):
-        return range(10)
+        return self.current_value
+
+    def next(self):
+        self.current_value = next(self.generator)
 
     def insert(self, x):
         self.x.append(x)
 
     def get_output(self):
-        return self.x
+        return [ self.x ] # Always output is list object.
 
 @pytest.mark.parametrize( ("input_list", "edge_node_name", "network_nodes", "comp"),
     [
