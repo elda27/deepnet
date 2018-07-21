@@ -238,14 +238,7 @@ class ImageDataGenerator(object):
 
 
 
-    def fixed_transform(self, input):
-        xp = chainer.cuda.get_array_module(input)
-        x = None
-        if isinstance(x, chainer.Variable):
-            x = xp.copy(input.data)
-        else:
-            x = xp.copy(input)
-
+    def random_transform(self, x):
         xp = chainer.cuda.get_array_module(x)
 
         # x is a single image, so it doesn't have image number at index 0
@@ -300,25 +293,25 @@ class ImageDataGenerator(object):
         if self.theta != 0:
             rotation_matrix = xp.array([[xp.cos(self.theta), -xp.sin(self.theta), 0],
                                         [xp.sin(self.theta), xp.cos(self.theta), 0],
-                                        [0, 0, 1]])
+                                        [0, 0, 1]], dtype=xp.float32)
             self.transform_matrix = rotation_matrix
 
         if self.tx != 0 or self.ty != 0:
             shift_matrix = xp.array([[1, 0, self.tx],
                                      [0, 1, self.ty],
-                                     [0, 0, 1]])
+                                     [0, 0, 1]], dtype=xp.float32)
             self.transform_matrix = shift_matrix if self.transform_matrix is None else xp.dot(self.transform_matrix, shift_matrix)
 
         if self.shear != 0:
             shear_matrix = xp.array([[1, -xp.sin(self.shear), 0],
                                     [0, xp.cos(self.shear), 0],
-                                    [0, 0, 1]])
+                                    [0, 0, 1]], dtype=xp.float32)
             self.transform_matrix = shear_matrix if self.transform_matrix is None else xp.dot(self.transform_matrix, shear_matrix)
 
         if self.zx != 1 or self.zy != 1:
             zoom_matrix = xp.array([[self.zx, 0, 0],
                                     [0, self.zy, 0],
-                                    [0, 0, 1]])
+                                    [0, 0, 1]], dtype=xp.float32)
             self.transform_matrix = zoom_matrix if self.transform_matrix is None else xp.dot(self.transform_matrix, zoom_matrix)
 
 
@@ -336,7 +329,13 @@ class ImageDataGenerator(object):
         # """ apply transform """        
         return self.fixed_transform(x)
         
-    def fixed_transform(self, x):
+    def fixed_transform(self, input):
+        x = None
+        if isinstance(x, chainer.Variable):
+            x = xp.copy(input.data.astype(xp.float32))
+        else:
+            x = xp.copy(input.astype(xp.float32))
+
         xp = chainer.cuda.get_array_module(x)
 
         # x is a single image, so it doesn't have image number at index 0
@@ -359,4 +358,4 @@ class ImageDataGenerator(object):
 
         x = x + self.intensity
 
-        return x
+        return chainer.Variable(x)

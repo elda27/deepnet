@@ -281,12 +281,11 @@ def random_transform(
 
     outputs = []
     for image in input:
-        input_shape = image.shape
-        data_augmentation.augmentations[mode](
+        outputs.append(data_augmentation.augmentations[mode](
             image,
             rotation, translation, zoom,
             intensity, 
-        )
+        ))
     return outputs
 
 @register_process()
@@ -296,6 +295,15 @@ def expand_dims(*input, axis=1):
         xp = chainer.cuda.get_array_module(i)
         output.append(xp.expand_dims(i, axis=axis))
     return output
+
+@register_process()
+def diff_image(*input):
+    output = []
+    for i, j in zip(input[::2], input[1::2]):
+        xp = chainer.cuda.get_array_module(i)
+        output.append(i - j)
+    return output
+        
 
 @register_process('loss.constrain_kernel')
 def constrain_kernel(network):

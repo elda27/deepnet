@@ -14,8 +14,8 @@ def transform_matrix_offset_center(matrix, x, y, z):
     o_x = float(x) / 2 + 0.5
     o_y = float(y) / 2 + 0.5
     o_z = float(z) / 2 + 0.5
-    offset_matrix = xp.array([[1, 0, 0, o_x], [0, 1, 0, o_y], [0, 0, 1, o_z], [0, 0, 0, 1]])
-    reset_matrix  = xp.array([[1, 0, 0, -o_x], [0, 1, 0, -o_y], [0, 0, 1, -o_z], [0, 0, 0, 1]])
+    offset_matrix = xp.array([[1, 0, 0, o_x], [0, 1, 0, o_y], [0, 0, 1, o_z], [0, 0, 0, 1]], dtype=xp.float32)
+    reset_matrix  = xp.array([[1, 0, 0, -o_x], [0, 1, 0, -o_y], [0, 0, 1, -o_z], [0, 0, 0, 1]], dtype=xp.float32)
     transform_matrix = xp.dot(xp.dot(offset_matrix, matrix), reset_matrix)
     return transform_matrix
 
@@ -159,16 +159,11 @@ class VolumeDataGenerator(object):
 
         if x is not None:
             input_shape = x.shape
-        elif y is not None:
-            input_shape = y.shape
 
         if self.crop_order == 'pre' and self.random_crop:
             h, w, z = self.crop_size
         else:
             h, w, z = input_shape[img_row_axis], input_shape[img_col_axis], input_shape[img_z_axis] 
-
-
-        #　""" set random transform value"""
 
         if self.rotation_range:
             px = xp.pi / 180 * xp.random.uniform(-self.rotation_range, self.rotation_range)
@@ -190,49 +185,44 @@ class VolumeDataGenerator(object):
             zx, zy, zz = xp.random.uniform(self.zoom_range[0], self.zoom_range[1], 3)
             
 
-        self.transform_matrix = None
+        self.transform_matrix = xp.eye(4, 4, dtype=xp.float32)
         
         if px != 0 or py != 0 or pz != 0:
             Rx = xp.array([[1, 0, 0],
                            [0, xp.cos(px), xp.sin(px)],
-                           [0, -xp.sin(px), xp.cos(px)]])
+                           [0, -xp.sin(px), xp.cos(px)]], dtype=xp.float32)
             Ry = xp.array([[xp.cos(py), 0, -xp.sin(py)],
                            [0, 1, 0],
-                           [xp.sin(py), 0, xp.cos(py)]])
+                           [xp.sin(py), 0, xp.cos(py)]], dtype=xp.float32)
             Rz = xp.array([[xp.cos(pz), xp.sin(pz), 0],
                            [-xp.sin(pz), xp.cos(pz), 0],
-                           [0, 0, 1]])
+                           [0, 0, 1]], dtype=xp.float32)
             
-            rotation_matrix = xp.zeros((4, 4))
+            rotation_matrix = xp.zeros((4, 4), dtype=xp.float32)
             rotation_matrix[:3, :3] = Rz.dot(Ry).dot(Rx) # z-y-x
             rotation_matrix[-1, -1] = 1    
         
             self.transform_matrix = rotation_matrix
-            
-                    
+        
         if tx != 0 or ty != 0 or tz != 0:    
             Txyz = xp.array([[1, 0, 0, tx],
                              [0, 1, 0, ty],
                              [0, 0, 1, tz],
-                             [0, 0, 0, 1]])
+                             [0, 0, 0, 1]], dtype=xp.float32)
                      
             self.transform_matrix = Txyz if self.transform_matrix is None else xp.dot(self.transform_matrix, Txyz)
-
 
         if zx != 1 or zy != 1 or zz != 1:
             zoom_matrix = xp.array([[zx, 0, 0, 0],
                                     [0, zy, 0, 0],
                                     [0, 0, zz, 0],
-                                    [0, 0, 0, 1]])
+                                    [0, 0, 0, 1]], dtype=xp.float32)
                                     
             self.transform_matrix = zoom_matrix if self.transform_matrix is None else xp.dot(self.transform_matrix, zoom_matrix)
     
-
         if self.transform_matrix is not None:
-
             self.transform_matrix = transform_matrix_offset_center(self.transform_matrix, h, w, z)                
                 
-
         if self.horizontal_flip:
             self.horizontal_flip_prob = xp.random.random()
         else:
@@ -300,4 +290,4 @@ class VolumeDataGenerator(object):
 
         x = x + self.intensity
 
-        return x
+        return chainer.Variable(x) if isinstance(input, chainer.Variable) else x
