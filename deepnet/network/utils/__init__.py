@@ -1,4 +1,5 @@
 import chainer
+import chainer.cuda
 from chainer import functions as F
 from chainer import links as L
 from chainer.utils import argument
@@ -120,3 +121,36 @@ class CBR(chainer.Chain):
         if not self.activation is None:
             h = self.activation(h)
         return h
+
+        
+from deepnet.network.init import register_network
+from deepnet.utils.network import IterableProcessor
+
+@register_network('patch_inference')
+class PatchInferencer(IterableProcessor):
+    def __init__(self, shape):
+        self.patch_shape = shape
+        self.index = [0] * len(shape)
+        self.output = None
+
+    def __call__(self, array):
+        if self.output is None:
+            xp = chainer.cuda.get_array_module(array)
+            self.output = xp.zeros_like(array)
+            if isinstance(array, chainer.Variable):
+                self.output = chainer.Variable(self.output)
+
+        start = [ self.index[i] * self.patch_shape for i in range(len(self.patch_shape))]
+        end = [ max(self.index[i] * self.patch_shape, array.shape[i]) for i in range(len(self.patch_shape))]
+        slices = tuple(map(slice, start, end))
+        self.current_slice = slices
+        return array[slices]
+
+    def insert(self, array):
+        self.output[self.current_slice] = array
+
+    def get_output(self):
+        output = self.output
+        self.output = None
+        return output
+

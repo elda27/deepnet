@@ -126,9 +126,7 @@ def build_networks(config, step=None):
                 continue
 
         if 'label' not in network_conf:
-            sleep(1e-6)
-            now = str(datetime.now()).encode('ascii')
-            network_conf['label'] = hashlib.md5(now).hexdigest()
+            network_conf['label'] = network.get_unique_label()
 
         proc = None
         updatable = False
@@ -142,7 +140,7 @@ def build_networks(config, step=None):
             registered_proc = _created_process[process_names[0]] # registered_proc contains 'proc' and 'proerty', and so on.
             proc = registered_proc['proc']
             proc = deepnet.utils.get_field(proc, process_names[1:])
-            updatable = registered_proc['update'] is not None
+            updatable = registered_proc['update']
             _updatable_process.append(proc)
             if not updatable:
                 warnings.warn('A defined network is used on network stream but an not updatable network. {}'.format(process_names[0]))
@@ -158,9 +156,9 @@ def build_networks(config, step=None):
                 output=network_conf['output'],
                 ))
 
-        network_manager.add(
-            network_conf.pop('label'), 
+        network_manager.add( 
             network.NetworkNode(
+                network_conf.pop('label'),
                 network_conf.pop('input'),
                 network_conf.pop('output'),
                 proc, 
