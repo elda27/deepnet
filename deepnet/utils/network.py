@@ -116,6 +116,8 @@ class NetworkManager:
         if not isinstance(out, (list, tuple)):
             out = [ out ]
 
+        assert len(out) == len(node.output), "Output is not satisfied."
+
         for name, var in zip(node.output, out):
             #assert name in self.walker.node_dependency, \
             #  'Unkwown input label: {}\nDependency node input are following: {}'.format(
