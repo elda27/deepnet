@@ -61,13 +61,16 @@ class Encoder(chainer.Chain):
 class Decoder(chainer.Chain):
     def __init__(
         self, n_dim, out_channel, 
-        input_dim=64, upsample_start_shape = (8, 8), 
+        input_dim=64, upsample_start_shape = None, 
         n_layers=4, n_units=32, 
         dropout='none', use_batch_norm=False,
         use_skipping_connection = 'none',
         **kwargs
         ):
         assert use_skipping_connection in DECODER_APPLY_NEXT_DICT
+
+        if upsample_start_shape is None:
+            upsample_start_shape = (8,) * n_dim
 
         self.layers = {}
         self.stores = {}
@@ -129,7 +132,7 @@ class Decoder(chainer.Chain):
             pads = [(0, 0), (0, 0)] + [ (int(math.floor(pix)), int(math.ceil(pix))) for pix in padding_pix ]
             from_h = F.pad(from_h, pads, 'constant')
         else:
-            from_h = utils.crop(from_h, h.shape)
+            from_h = utils.crop(from_h, h.shape, self.n_dim)
 
         h = h + from_h
         h = self.layers[name](h)
@@ -148,7 +151,7 @@ class Decoder(chainer.Chain):
             pads = [(0, 0), (0, 0)] + [ (int(math.floor(pix)), int(math.ceil(pix))) for pix in padding_pix ]
             from_h = F.pad(from_h, pads, 'constant')
         else:
-            from_h = utils.crop(from_h, h.shape)
+            from_h = utils.crop(from_h, h.shape, self.n_dim)
 
         h = F.concat((h, from_h), axis=1)
         h = self.layers[name](h)
@@ -212,5 +215,5 @@ class ConvolutionalAutoEncoder(chainer.Chain):
             h = self.decoder(h, self.encoder.stores)
         else:
             h = self.decoder(h)
-        h = utils.crop(h, x.shape)
+        h = utils.crop(h, x.shape, self.n_dim)
         return h
