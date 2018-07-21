@@ -1,7 +1,7 @@
 
 [config]
 input = [
-  'volume'
+  "volume"
 ]
 
 logging = [
@@ -14,6 +14,7 @@ optimizing_loss = ['loss']
 
 [hyper_parameter]
 n_encode_dim = 64
+n_layers = 4
 gaussian_sigma = 20
 
 [[process]]
@@ -22,15 +23,34 @@ type   = "network.cae"
 update = "loss"
 
 # Arguments
-n_dim = "3"
-in_out_channel = "1"
+n_dim = 3
+in_out_channel = 1
 encode_dim = "${hyper_parameter.n_encode_dim}"
 dropout = "dropout"
 use_batch_norm = true
+n_layers = "${hyper_parameter.n_layers}"
 
 # Network declaration
+## Data augmentation
 [[network]]
 input=["volume"]
+process='random_transform'
+output=["volume_aug"]
+
+mode = "volume"
+rotation    = 10
+translation = 50
+zoom        = 0.1
+intensity   = 0
+
+[[network]]
+input="volume_aug"
+process="expand_dims"
+output="volume_aug_expanded"
+axis=1
+
+[[network]]
+input=["volume_aug_expanded"]
 process="to_gpu"
 output=["gpu_volume"]
 
@@ -56,29 +76,29 @@ output="loss"
 test=false
 
 ## Volume rendering for debug
-[[network]]
-input  = ["volume", "case_name"]
-process = "volume_rendering"
-output = ["roll_volume_drr_image", "pitch_volume_drr_image", "yaw_volume_drr_image"]
-pose = [
-  [90, 0, 0],
-  [0, 90, 0],
-  [0, 0, 90],
-]
-train=false
-test=false
-
-[[network]]
-input  = "gpu_reconstruct_volume"
-process = "volume_rendering"
-output = ["roll_reconstruct_volume_drr_image", "pitch_reconstruct_volume_drr_image", "yaw_reconstruct_volume_drr_image"]
-pose = [
-  [90, 0, 0],
-  [0, 90, 0],
-  [0, 0, 90],
-]
-train=false
-test=false
+# [[network]]
+# input  = ["volume", "case_name"]
+# process = "volume_rendering"
+# output = ["roll_volume_drr_image", "pitch_volume_drr_image", "yaw_volume_drr_image"]
+# pose = [
+#   [90, 0, 0],
+#   [0, 90, 0],
+#   [0, 0, 90],
+# ]
+# train=false
+# test=false
+# 
+# [[network]]
+# input  = "gpu_reconstruct_volume"
+# process = "volume_rendering"
+# output = ["roll_reconstruct_volume_drr_image", "pitch_reconstruct_volume_drr_image", "yaw_reconstruct_volume_drr_image"]
+# pose = [
+#   [90, 0, 0],
+#   [0, 90, 0],
+#   [0, 0, 90],
+# ]
+# train=false
+# test=false
 
 [[network]]
 input = ["gpu_reconstruct_volume", "gpu_volume"]
@@ -96,13 +116,13 @@ image_names = [
 output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__name__}_{__index__}.mhd'
 num_images = 3
 
-[[visualize]]
-type = "tile_image_visualizer"
-output_filename = "${visualize_dir}/{__train_iteration__:08d}_tile.png"
-tile_shape = [3, 3]
-block_images =  [ 
-    "roll_volume_drr_image", "pitch_volume_drr_image", "yaw_volume_drr_image",
-    "roll_reconstruct_volume_drr_image", "pitch_reconstruct_volume_drr_image", "yaw_reconstruct_volume_drr_image"
-  ]
-block_shape = [2, 3]
+# [[visualize]]
+# type = "tile_image_visualizer"
+# output_filename = "${visualize_dir}/{__train_iteration__:08d}_tile.png"
+# tile_shape = [3, 3]
+# block_images =  [ 
+#     "roll_volume_drr_image", "pitch_volume_drr_image", "yaw_volume_drr_image",
+#     "roll_reconstruct_volume_drr_image", "pitch_reconstruct_volume_drr_image", "yaw_reconstruct_volume_drr_image"
+#   ]
+# block_shape = [2, 3]
 

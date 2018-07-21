@@ -48,6 +48,7 @@ in_channel = 1
 [[initialize]]
 mode = "load"
 name = "CAE"
+from_step = 1
 
 [[initialize]]
 mode = "load"
