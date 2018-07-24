@@ -1,10 +1,11 @@
 import chainer
 import os.path
 import glob
-from . import mhd
+from deepnet.utils import mhd
 import warnings
 import imageio
 import numpy as np
+import abc
 
 class XpDataset(chainer.dataset.DatasetMixin):
     image_format = dict(
@@ -134,6 +135,7 @@ class RangeArray:
 
 class GeneralDataset(chainer.dataset.DatasetMixin):
     input_methods = {}
+    extensions    = {}
     used_indices = 0.0
 
     def __init__(self, config, indices):
@@ -147,6 +149,8 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
         
         self.case_names = config['config']['case_names'] if 'case_names' in config['config'] else None 
         self.stage_inputs = []
+        self.cache = []
+        self.iteration = 1000
 
         if indices is None:
             indices = self.case_names
@@ -161,12 +165,12 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
                 paths = []
                 if not isinstance(indices, float) and indices is not None:
                     # If dataset has some cases
-                    case_names = RangeArray()
+                    case_names = []
 
                     for case_name in indices:  # Replace case_name 
                         assert case_name in self.case_names, 'Unknown case name: ' + case_name + str(self.case_names)
                         current_paths = self.glob_case_dir(input_['paths'], '<case_names>', case_name)
-                        case_names.append(len(paths), len(paths) + len(current_paths), case_name)
+                        case_names.extend([case_name] * len(current_paths))
                         paths.extend(current_paths)
                 else:
                     assert GeneralDataset.used_indices < 1.0, 'Failed to split dataset because the dataset is fully used.'
@@ -223,6 +227,87 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
 
     def __len__(self):
         return max((len(data['paths']) for stage_input in self.stage_inputs for data in stage_input.values()))
+
+    @staticmethod
+    def generate_extension(extension_field):
+        cls = GeneralDataset
+        return cls.extensions[extension_field['type']](extension_field)
+
+class CachedDataset(GeneralDataset):
+    def __init__(self, config, indices, mode):
+        super().__init__(config, indices)
+        self.mode = mode
+
+        self.extensions = []
+        for extension_field in config['extension']:
+            extension = GeneralDataset.generate_extension(extension_field)
+            extension.set_mode(self.mode)
+            self.extensions.append(extension)
+
+        self.cache = None
+        for i in range(super().__len__()):
+            stage_input = super().get_example(i)
+            if self.cache is None:
+                self.cache = [ [] for _ in stage_input ]
+            
+            for j in range(len(stage_input)):
+                self.cache[j].extend(self.process_extension([ stage_input[j] ]))
+            
+    def process_extension(self, data_list, extensions = None):
+        if extensions is None:
+            extensions = list(reversed(self.extensions))
+
+        result_data = []
+        extension = extensions[-1]
+        for data in data_list:
+            gen_data = extension(data)
+            
+            if isinstance(gen_data, list):
+                for d in gen_data:
+                    d.update({ key: value for key, value in data.items() if key not in gen_data })
+                    result_data.append(d)
+            else:
+                result_data.append(data.update(gen_data))
+    
+        extensions.pop()
+        if len(extensions) == 0:
+            return result_data
+
+        return self.process_extension(result_data, extensions)
+
+    def get_example(self, index):
+        return [ self.cache[i][index] for i in range(len(self.cache)) ]
+
+    def __len__(self):
+        return max((len(stage_input) for stage_input in self.cache))
+
+class DatasetExtension(metaclass=abc.ABCMeta):
+    def __init__(self, config):
+        self.extension_name = config['type']
+
+    def set_mode(self, mode):
+        self.mode = mode
+
+    def is_train(self):
+        return self.mode == 'train'
+    def is_valid(self):
+        return self.mode == 'valid'
+    def is_test(self):
+        return self.mode == 'test'
+
+    #@abc.abstractmethod
+    #def get_output_size(self):
+    #    raise NotImplementedError()
+
+    @abc.abstractmethod
+    def __call__(self, stage_input):
+        raise NotImplementedError()
+
+def register_extension(type_):
+    def _register_extension(klass):
+        GeneralDataset.extensions[type_] = klass
+        return klass
+    return _register_extension
 
 def register_input_method(type_):
     def _register_input_method(func):
