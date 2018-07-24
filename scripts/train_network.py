@@ -37,8 +37,12 @@ def main():
     valid_index = deepnet.utils.parse_index_file(args.valid_index, None)
 
     # Construct dataset
-    train_dataset = deepnet.utils.dataset.GeneralDataset(dataset_config, train_index)
-    valid_dataset = deepnet.utils.dataset.GeneralDataset(dataset_config, valid_index)
+    if args.enable_dataset_extension:
+        train_dataset = deepnet.utils.dataset.CachedDataset(dataset_config, train_index, mode='train')
+        valid_dataset = deepnet.utils.dataset.CachedDataset(dataset_config, valid_index, mode='valid')
+    else:
+        train_dataset = deepnet.utils.dataset.GeneralDataset(dataset_config, train_index)
+        valid_dataset = deepnet.utils.dataset.GeneralDataset(dataset_config, valid_index)
 
     # Setup directories
     log_dir = log_util.get_training_log_dir(
@@ -85,6 +89,8 @@ def main():
     optimizers = []
     optimizer = chainer.optimizers.Adam(args.lr_rate)
     for model in deepnet.network.init._updatable_process:
+        if not issubclass(type(model), chainer.Chain):
+            continue
         if args.gpu >=0:
             model.to_gpu()
         optimizer.setup(model)
@@ -153,6 +159,7 @@ def build_arguments():
         )
 
     parser.add_argument('--dataset-config', type=str, required=True, help='A dataset configuraiton written by extended toml format.')
+    parser.add_argument('--enable-dataset-extension', action='store_true', help='Activate extensions for dataset (It enables caching dataset too.)')
     parser.add_argument('--network-config', type=str, required=True, help='A network configuraiton written by extended toml format.')
     parser.add_argument('--hyper-param', type=str, default=None, nargs='*', help='Set hyper parameters defined on network config. (<param name>:<value>)')
     
