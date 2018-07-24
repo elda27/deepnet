@@ -43,6 +43,8 @@ def register_process(name = None):
 
 Attributes = {}
 
+def invoke_process(name, *args, **kwargs):
+    return _registered_process[name](*args, **kwargs)
 
 def set_gpu_id(gpu_id):
     global Attributes
