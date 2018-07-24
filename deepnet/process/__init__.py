@@ -302,7 +302,6 @@ def diff_image(*input):
         xp = chainer.cuda.get_array_module(i)
         output.append(i - j)
     return output
-        
 
 @register_process('loss.constrain_kernel')
 def constrain_kernel(network):
