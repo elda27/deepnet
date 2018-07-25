@@ -89,13 +89,13 @@ class Decoder(chainer.Chain):
         n_unit = n_units * 2 ** (self.n_layers - 1)
         self.eur = 2 if self.use_skipping_connection == 'concat' else 1
         self.layers['fc'] = L.Linear(input_dim, reduce(lambda x, y: x * y, upsample_start_shape) * n_unit)
-        self.layers['c{}1'.format(n_layers)] = utils.CBR(n_dim, self.eur * n_unit, n_unit, ksize=7, stride=3, bn=use_batch_norm, sample='up', activation=F.relu, dropout=dropout)
+        self.layers['c{}1'.format(n_layers)] = utils.CBR(n_dim, self.eur * n_unit, n_unit, ksize=5, stride=3, bn=use_batch_norm, sample='up', activation=F.relu, dropout=dropout)
         self.layers['c{}2'.format(n_layers)] = utils.CBR(n_dim, n_unit, n_unit // self.eur, ksize=3, stride=1, bn=use_batch_norm, sample='down', activation=F.relu, dropout=dropout)
         self.n_start_units = n_unit
 
         for i in range(n_layers - 1, 1, -1):
             next_unit = n_units * 2 ** (i - 1)
-            self.layers['c{}1'.format(i)] = utils.CBR(n_dim, n_unit, next_unit, ksize=4, stride=2, bn=use_batch_norm, sample='up', activation=F.relu, dropout=dropout)
+            self.layers['c{}1'.format(i)] = utils.CBR(n_dim, n_unit, next_unit, ksize=3, stride=2, bn=use_batch_norm, sample='up', activation=F.relu, dropout=dropout)
             self.layers['c{}2'.format(i)] = utils.CBR(n_dim, next_unit, next_unit // self.eur, ksize=3, stride=1, bn=use_batch_norm, sample='down', activation=F.relu, dropout=dropout)
             n_unit = next_unit 
 
@@ -182,12 +182,15 @@ class ConvolutionalAutoEncoder(chainer.Chain):
         dropout='none', use_batch_norm=True,
         use_skipping_connection='none', 
         vae_unit=None,
+        latent_activation=False,
         **kwargs):
         self.layers = {}
+        self.stores = {}
         self.n_dim = n_dim
         self.use_batch_norm = use_batch_norm
         self.dropout = dropout
         self.use_skipping_connection = use_skipping_connection
+        self.latent_activation = latent_activation
         self.vae_unit = None
         chainer.Chain.__init__(self)
         with self.init_scope():
@@ -210,6 +213,11 @@ class ConvolutionalAutoEncoder(chainer.Chain):
 
     def __call__(self, x):
         h = self.encoder(x)
+
+        if self.latent_activation:
+            h = F.sigmoid(h)
+
+        self.stores['encoder'] = h
 
         if self.use_skipping_connection:
             h = self.decoder(h, self.encoder.stores)

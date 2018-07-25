@@ -21,6 +21,7 @@ from itertools import cycle
 import json
 import log_util
 
+
 def main():
     parser = build_arguments()
     args = parser.parse_args()
@@ -74,6 +75,9 @@ def main():
 
     # Initialize network
     deepnet.network.init.initialize_networks(log_dir, args.step_index, network_config)
+
+    # Setup post processor
+    postprocessor = deepnet.utils.postprocess.PostProcessManager(network_config.get('postprocess', []))
 
     # Setup logger
     logger = [ 
@@ -144,6 +148,7 @@ def main():
         archive_dir=archive_dir,
         archive_nodes=archive_nodes,
         train_config=train_config,
+        postprocessor=postprocessor
     )
 
     trainer.train()

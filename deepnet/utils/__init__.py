@@ -3,6 +3,7 @@ from . import network
 from . import trainer
 from . import logger
 from . import visualizer
+from . import postprocess
 
 import glob
 import os

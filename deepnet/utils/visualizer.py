@@ -87,24 +87,38 @@ class Visualizer:
 
 @register_visualizer('image_write')
 class ImageWriter(Visualizer):
-    def __init__(self, output_filename, num_images, image_names, spacing='spacing'):
+    def __init__(self,
+        output_filename, num_images, image_names, 
+        supress_exception = False, spacing='spacing',
+        array_variables = []
+        ):
         self.num_images = num_images
         self.image_names = image_names
         self.spacing = spacing
+        self.supress_exception = supress_exception
+        self.array_variables = array_variables if isinstance(array_variables, list) else [ array_variables ] 
         super().__init__(output_filename)
 
     def render(self, variables):
         iteration = variables['__iteration__']
-        if iteration >= self.num_images:
+        if iteration >= self.num_images and self.num_images >= 0:
             return True
         elif iteration == 0:
+            iteration = 0
             self.images = dict()
         
         for image_name in self.image_names:
-            assert image_name in variables
+            if image_name not in variables:
+                if self.supress_exception:
+                    continue
+                raise AttributeError('Unknown image name: {}'.format(image_name))
+            
             image = self.to_np(variables[image_name])
             for i in range(image.shape[0]):
-                if image_name in self.images and len(self.images[image_name]) >= self.num_images:
+                if image_name in self.images and (
+                    len(self.images[image_name]) >= self.num_images and
+                    self.num_images != -1
+                    ):
                     break
                 self.images.setdefault(image_name, []).append(np.copy(image[i]))
         return False
@@ -120,7 +134,11 @@ class ImageWriter(Visualizer):
                     if len(spacing) < image.ndim:
                         spacing = tuple(spacing) + (1,) * (image.ndim - len(spacing))
 
-                save_image(self.output_filename.format(**self.variables, __index__=i, __name__=name), image, spacing)
+                array_variables = {}
+                for key in self.array_variables:
+                    array_variables['__array__/' + key] = self.variables[key][i]
+
+                save_image(self.output_filename.format(**self.variables, **array_variables, __index__=i, __name__=name), image, spacing)
         self.images.clear()
 
     def get_figure(self):

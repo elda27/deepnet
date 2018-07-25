@@ -11,7 +11,7 @@ class PatchBasedInference(DatasetExtension):
 
         self.cache_size = config.get('cache_size', 50)
         self.population_size = self.cache_size * 10
-        self.foreground_ratio = config.get('foreground_ratio', 0.6)
+        self.foreground_ratio = config.get('foreground_ratio', 0.8)
         self.background_pixel = config.get('background_pixel', -1000)
         
         for target in config['targets']:
@@ -20,13 +20,13 @@ class PatchBasedInference(DatasetExtension):
                 destination = target['destination']
                 if isinstance(destination, dict):
                     self.destination = destination['image']
-                    self.destination_patch_region = destination.get('patch_region', destination + '.patch_region')
+                    self.destination_patch_region = destination.get('patch_region', destination + '/patch_region')
                 else:
                     self.destination = destination
-                    self.destination_patch_region = destination + '.patch_region'
+                    self.destination_patch_region = destination + '/patch_region'
             else:
-                self.destination = self.source + '.patch'
-                self.destination_patch_region = self.source + '.patch_region'
+                self.destination = self.source + '/patch'
+                self.destination_patch_region = self.source + '/patch_region'
 
     def __call__(self, stage_input):
         if self.source not in stage_input:
@@ -89,7 +89,7 @@ class RandomCropper:
         crop_images = sorted(crop_images, key=lambda x: x[0], reverse=True)
         fore_end_of_index = int(self.n_caches * self.fore_prob)
         result_images.extend([ crop_images[i][1] for i in range(fore_end_of_index) ])
-        result_crop_regions.extend(crop_images[:fore_end_of_index][2])
+        result_crop_regions.extend([ crop_images[i][2] for i in range(fore_end_of_index) ])
 
         random_choice = random.choices(crop_images[fore_end_of_index:], k = self.n_caches - fore_end_of_index)
         result_images.extend([ elem[1] for elem in random_choice ])
@@ -120,10 +120,10 @@ class PatchCropper:
             indices = []
             ci = 1
             for mi in max_indices:
-                indices.append(index / ci % mi)
+                indices.append(index // ci % mi)
                 ci *= mi
 
-            start = [ int(min(int(index * ps), s - ps)) for s, ps in zip(array.shape, self.patch_shape) ]
+            start = [ int(min(int(i * ps), s - ps)) for i, s, ps in zip(indices, array.shape, self.patch_shape) ]
             end = [ s + ps for s, ps in zip(start, self.patch_shape) ]
             slices = tuple(map(slice, start, end))
 
