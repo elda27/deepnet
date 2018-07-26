@@ -13,13 +13,14 @@ class Encoder(chainer.Chain):
     def __init__(self,
         n_dim, in_channel, 
         encode_dim=64, n_layers=4, 
-        n_units=32, 
+        n_units=32, n_res_layers = 0,
         dropout='none', use_batch_norm=True, 
         #**kwargs
         ):
         self.layers = {}
         self.stores = {}
         self.n_layers = n_layers
+        self.n_res_layers = n_res_layers
         self.encode_dim = encode_dim
         
         w = chainer.initializers.Normal(0.02)
@@ -39,6 +40,9 @@ class Encoder(chainer.Chain):
 
         self.layers['c{}1'.format(n_layers)] = utils.CBR(n_dim, n_unit, 1, stride=3, bn=use_batch_norm, sample='down', activation=F.relu, dropout=dropout)
 
+        for i in range(n_res_layers):
+            self.layers['res' + str(i)] = utils.ResBlock(n_dim, n_unit, n_unit, n_unit)
+
         self.layers['fc'] = L.Linear(None, out_size=encode_dim)
 
         chainer.Chain.__init__(self, **self.layers)
@@ -53,6 +57,11 @@ class Encoder(chainer.Chain):
         
         h = self.layers['c{}1'.format(self.n_layers)](h)
         self.stores['c{}1'.format(self.n_layers)] = h
+        
+        for i in range(0, self.n_res_layers):
+            h = self.layers['res{}'.format(i)](h)
+            #self.stores['res{}'.format(i)] = h
+        
         h = self.layers['fc'](h)
         self.stores['fc'] = h
         return h
@@ -62,7 +71,7 @@ class Decoder(chainer.Chain):
     def __init__(
         self, n_dim, out_channel, 
         input_dim=64, upsample_start_shape = None, 
-        n_layers=4, n_units=32, 
+        n_layers=4, n_units=32, n_res_layers = 0,
         dropout='none', use_batch_norm=False,
         use_skipping_connection = 'none',
         **kwargs
@@ -77,6 +86,7 @@ class Decoder(chainer.Chain):
         self.n_dim = n_dim
         self.input_dim = input_dim
         self.n_layers = n_layers
+        self.n_res_layers = n_res_layers
         self.out_channel = out_channel
         self.n_units = n_units
         self.upsample_start_shape = upsample_start_shape
@@ -89,6 +99,10 @@ class Decoder(chainer.Chain):
         n_unit = n_units * 2 ** (self.n_layers - 1)
         self.eur = 2 if self.use_skipping_connection == 'concat' else 1
         self.layers['fc'] = L.Linear(input_dim, reduce(lambda x, y: x * y, upsample_start_shape) * n_unit)
+
+        for i in range(n_res_layers - 1, -1, -1):
+            self.layers['res' + str(i)] = utils.ResBlock(n_dim, n_unit, n_unit, n_unit)
+
         self.layers['c{}1'.format(n_layers)] = utils.CBR(n_dim, self.eur * n_unit, n_unit, ksize=5, stride=3, bn=use_batch_norm, sample='up', activation=F.relu, dropout=dropout)
         self.layers['c{}2'.format(n_layers)] = utils.CBR(n_dim, n_unit, n_unit // self.eur, ksize=3, stride=1, bn=use_batch_norm, sample='down', activation=F.relu, dropout=dropout)
         self.n_start_units = n_unit
@@ -108,6 +122,10 @@ class Decoder(chainer.Chain):
         h = F.relu(self.layers['fc'](x))
         self.stores['fc'] = h
         h = F.reshape(h, (h.shape[0], self.n_start_units,) + self.upsample_start_shape)
+
+        for i in range(self.n_res_layers - 1, -1, -1):
+            h = self.layers['res' + str(i)](h)
+
         for i in range(self.n_layers, 1, -1):
             h = self.apply_next(self, h, 'c{}1'.format(i), connections, from_name='c{}2'.format(i - 1))
             h = self.apply_next(self, h, 'c{}2'.format(i))
@@ -178,12 +196,13 @@ def ValiationAutoEncoderUnit(input_vector):
 class ConvolutionalAutoEncoder(chainer.Chain):
     def __init__(self, 
         n_dim, in_out_channel, 
-        encode_dim=64, n_layers=4, 
+        encode_dim=64, n_layers=4, n_res_layers=0, 
         dropout='none', use_batch_norm=True,
         use_skipping_connection='none', 
         vae_unit=None,
         latent_activation=False,
         **kwargs):
+        
         self.layers = {}
         self.stores = {}
         self.n_dim = n_dim
@@ -192,19 +211,20 @@ class ConvolutionalAutoEncoder(chainer.Chain):
         self.use_skipping_connection = use_skipping_connection
         self.latent_activation = latent_activation
         self.vae_unit = None
+
         chainer.Chain.__init__(self)
         with self.init_scope():
             self.encoder = Encoder(
                 n_dim, in_out_channel, 
                 encode_dim=encode_dim, 
-                n_layers=n_layers, 
+                n_layers=n_layers, n_res_layers=n_res_layers,
                 dropout=dropout, use_batch_norm=use_batch_norm
                 )
             self.decoder = Decoder(
                 n_dim, in_out_channel, 
                 input_dim=encode_dim, 
                 n_layers=n_layers, 
-                n_start_units=32,
+                n_start_units=32, n_res_layers=n_res_layers,
                 dropout=dropout, use_batch_norm=use_batch_norm,
                 use_skipping_connection=use_skipping_connection
                 )
