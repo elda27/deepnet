@@ -127,3 +127,70 @@ class CBR(chainer.Chain):
         if not self.activation is None:
             h = self.activation(h)
         return h
+
+class ResBlock(chainer.Chain):
+    dropout = dict(
+        bayesian=bayesian_dropout,
+        dropout=F.dropout,
+        none=None,
+    )
+
+    def __init__(self, 
+        n_dims, in_ch, lat_ch, out_ch, 
+        ksize=3, stride=1, activation=F.relu, 
+        dropout='dropout', method='post'
+        ):
+        self.activation = activation
+        w = chainer.initializers.Normal(0.02)
+
+        if method == 'post':
+            self.method = ResBlock.post_activation
+        elif method == 'pre':
+            self.method = ResBlock.pre_activation
+        else:
+            raise ValueError('A method is either "pre" or "post". Actual: ' + method)
+        self.dropout = ResBlock.dropout[dropout]
+
+        super().__init__()
+        with self.init_scope():
+            self.c1  = L.ConvolutionND(n_dims, in_ch, lat_ch, ksize=ksize, stride=stride, pad=1, initialW=w)
+            self.bn1 = L.BatchNormalization(lat_ch)
+            self.c2  = L.ConvolutionND(n_dims, lat_ch, out_ch, ksize=ksize, stride=stride, pad=1, initialW=w)
+            self.bn2 = L.BatchNormalization(out_ch)
+
+    def __call__(self, x):
+        return self.method(self, x)
+
+    def post_activation(self, x):
+        h = x
+        h = self.c1(h)
+        h = self.bn1(h)
+        h = self.activation(h)
+
+        h = self.c2(h)
+        h = self.bn2(h)
+        
+        h = self.activation(h + x)
+
+        if self.dropout:
+            h = F.dropout(h)
+
+        return h
+
+    def pre_activation(self, x):
+        h = x
+        h = self.bn1(h)
+        h = self.activation(h)
+        h = self.c1(h)
+
+        h = self.bn2(h)
+        h = self.activation(h + x)
+        
+        if self.dropout:
+            h = F.dropout(h)
+
+        h = self.c2(x)
+
+
+        return h + x
+
