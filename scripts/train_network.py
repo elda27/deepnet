@@ -74,7 +74,7 @@ def main():
     # Construct network
     network_config = deepnet.config.load(args.network_config, is_variable_expansion=False)
     network_config = update_log_dir(network_config, log_dirs) # Update log directory
-    network_config['hyper_parameter'] = parse_hyper_parameter(args.hyper_param, network_config['hyper_parameter'])
+    network_config['hyper_parameter'].update(parse_hyper_parameter(args.hyper_param, network_config['hyper_parameter']))
     network_config = deepnet.config.expand_variable(network_config)
     network_manager, visualizers = deepnet.network.init.build_networks(network_config)
 
