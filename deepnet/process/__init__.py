@@ -353,13 +353,13 @@ def _make_overlap(labels):
     return F.argmax(labels, axis=1)
 
 import deepnet.network.init
+from deepnet.utils import config
 
 @register_process()
 def get_latent_representation(*_, source):
     accessors = source.split('.')
-    proc = deepnet.network.init.get_process(accessors[0])
-    proc = utils.get_field(proc, accessors[1:-1])
-    return proc.stores[accessors[-1]]
+    network_manager = config.get_global_config('main_network')
+    return network_manager[accessors[0]].get_param(accessors[1:])
 
 @register_process("loss.penalty_sparse_encoding")
 def penalty_sparse_encoding(vector, rho=0.05):

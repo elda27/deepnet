@@ -11,6 +11,10 @@ import types
 from datetime import datetime
 import hashlib
 import itertools
+from copy import deepcopy
+import chainer.functions as F
+from deepnet.utils import config 
+from deepnet.utils import functions as utils
 
 def get_unique_label():
     sleep(1e-6)
@@ -85,6 +89,103 @@ class NetworkNode:
         if clear_callback:
             self.callback = None
         self.is_already_ = { i: False for i in self.input }
+
+    def get_param(self, fields):
+        proc = utils.get_field(self.model, fields[:-1])
+        return proc.stores[fields[-1]]
+
+
+class ParallelNetworkNode(NetworkNode):
+    """GPU parallelization for chainer network.
+
+    I/O data is assume zero of gpu id.
+    """
+
+    def __init__(self, 
+        name, 
+        input, output, model, 
+        training=True, validation=True, test=True, 
+        updatable = False, iterate_from = None,
+        args=dict()
+        ):
+        super().__init__(
+            name, input, output, model, 
+            training=training, validation=validation, test=test, 
+            updatable=updatable, iterate_from=iterate_from,
+            args=args,
+            )
+        self.parallel_models = [ self.model ]
+        self.gpu_ids = config.get_global_config('gpu_id')
+        self.is_serial = False
+        if not isinstance(gpu_id, (tuple, list)):
+            self.gpu_ids = [ self.gpu_ids ]
+            self.is_serial = True
+            return
+        
+        assert 0 in self.gpu_ids, "Main GPU assume gpu id 0."
+
+        self.gpu_ids = list(sorted(self.gpu_ids))
+        for gpu_id in self.gpu_ids:
+            if gpu_id == 0:
+                continue
+            
+            par_model = deepcopy(self.model)
+            self.parallel_models.append(par_model.to_gpu(gpu_id))
+    
+    def __call__(self, *args, **kwargs):
+        if self.is_serial:
+            return super().__call__(*args, **kwargs)
+
+        for model in self.parallel_models[1:]: # Update last trained parameter
+            model.copyparams(self.model)
+
+        results = []
+        for gpu_id, model in zip(self.gpu_ids, self.parallel_models):
+            gpu_args, gpu_kwargs = self.copy_gpu(gpu_id, *args, **kwargs)
+            result = model(*args, **kwargs)
+            if gpu_id == 0:
+                results.append(result)
+            else:
+                results.append(F.copy(result, 0))
+        
+        return F.concat(results)
+
+    def copy_gpu(gpu_id, *args, **kwagrs):
+        if gpu_id == 0:
+            return args, kwargs
+        
+        batch_size = config.get_global_config('batch_size')
+
+        gpu_args = []
+        gpu_kwargs = {}
+        
+        for arg in args:
+            if isinstance(arg, chainer.Variable):
+                gpu_args.append(F.copy(arg, gpu_id))
+            else:
+                gpu_args.append(arg)
+        
+        for key, arg in kwargs:
+            if isinstance(arg, chainer.Variable):
+                gpu_kwargs[key] = F.copy(arg, gpu_id)
+            else:
+                gpu_kwargs[key] = arg
+                
+        return gpu_args, gpu_kwargs
+
+    def get_param(self, fields):
+        if self.is_serial:
+            return super().get_param(*args, **kwargs)
+
+        results = []
+        for gpu_id, model in zip(self.gpu_ids, self.parallel_models):
+            proc = utils.get_field(self.model, fields[:-1])
+            results.append(F.copy(proc.stores[fields[-1]], 0))
+        return F.concat(results)
+
+    def update(self):
+        for model in self.parallel_models:
+            model.cleargrads()
 
 def clear_network_state(network, clear_callback = True):
         for _, node in network.nodes(data='node'):

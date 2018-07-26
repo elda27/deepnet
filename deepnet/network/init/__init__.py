@@ -128,6 +128,7 @@ def build_networks(config, step=None):
         if 'label' not in network_conf:
             network_conf['label'] = network.get_unique_label()
 
+        node_type = network.NetworkNode
         proc = None
         updatable = False
         process_name = network_conf.pop('process')
@@ -144,6 +145,7 @@ def build_networks(config, step=None):
             _updatable_process.append(proc)
             if not updatable:
                 warnings.warn('A defined network is used on network stream but an not updatable network. {}'.format(process_names[0]))
+            node_type = network.ParallelNetworkNode
 
         elif process_name in process._registered_process:
             proc = process._registered_process[process_name]
@@ -157,7 +159,7 @@ def build_networks(config, step=None):
                 ))
 
         network_manager.add( 
-            network.NetworkNode(
+            node_type(
                 network_conf.pop('label'),
                 network_conf.pop('input'),
                 network_conf.pop('output'),
