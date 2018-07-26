@@ -26,10 +26,15 @@ def main():
     parser = build_arguments()
     args = parser.parse_args()
 
-    if args.gpu >= 0:
-        cuda.get_device(args.gpu).use()
+    if len(args.gpu) > 1 or args.gpu[0] >= 0:
+        for gpu in args.gpu:
+            cuda.get_device(gpu).use()
 
+    assert len(args.batch_size) == len(args.gpu)
     assert args.step_index > 0
+
+    deepnet.utils.config.set_global_config('gpu_id', args.gpu)
+    deepnet.utils.config.set_global_config('batch_size', args.batch_size)
 
     # Load configs
     dataset_config = deepnet.config.load(args.dataset_config)
@@ -156,8 +161,8 @@ def main():
 
 def build_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--gpu', type=int, default=0, help='gpu id')
-    parser.add_argument('--batch-size', type=int, default=5, help='batch size')
+    parser.add_argument('--gpu', type=int, nargs="*", default=[0], help='gpu id')
+    parser.add_argument('--batch-size', type=int, nargs="*", default=[5], help='batch size')
 
     parser.add_argument('--exp-name', type=str, default=None, help='Experiments name.'
         'If None, this value will be exp_name in the dataset config.'
