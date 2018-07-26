@@ -12,6 +12,7 @@ from datetime import datetime
 import hashlib
 import itertools
 from copy import deepcopy
+import chainer
 import chainer.functions as F
 from deepnet.utils import config 
 from deepnet.utils import functions as utils
@@ -117,7 +118,7 @@ class ParallelNetworkNode(NetworkNode):
         self.parallel_models = [ self.model ]
         self.gpu_ids = config.get_global_config('gpu_id')
         self.is_serial = False
-        if not isinstance(gpu_id, (tuple, list)):
+        if not isinstance(self.gpu_ids, (tuple, list)):
             self.gpu_ids = [ self.gpu_ids ]
             self.is_serial = True
             return
@@ -130,7 +131,8 @@ class ParallelNetworkNode(NetworkNode):
                 continue
             
             par_model = deepcopy(self.model)
-            self.parallel_models.append(par_model.to_gpu(gpu_id))
+            par_model.to_gpu(gpu_id)
+            self.parallel_models.append(par_model)
     
     def __call__(self, *args, **kwargs):
         if self.is_serial:
@@ -142,7 +144,7 @@ class ParallelNetworkNode(NetworkNode):
         results = []
         for gpu_id, model in zip(self.gpu_ids, self.parallel_models):
             gpu_args, gpu_kwargs = self.copy_gpu(gpu_id, *args, **kwargs)
-            result = model(*args, **kwargs)
+            result = model(*gpu_args, **gpu_kwargs)
             if gpu_id == 0:
                 results.append(result)
             else:
@@ -150,9 +152,9 @@ class ParallelNetworkNode(NetworkNode):
         
         return F.concat(results)
 
-    def copy_gpu(gpu_id, *args, **kwagrs):
+    def copy_gpu(self, gpu_id, *args, **kwargs):
         if gpu_id == 0:
-            return args, kwargs
+            return (args, kwargs)
         
         batch_size = config.get_global_config('batch_size')
 
@@ -165,7 +167,7 @@ class ParallelNetworkNode(NetworkNode):
             else:
                 gpu_args.append(arg)
         
-        for key, arg in kwargs:
+        for key, arg in kwargs.items():
             if isinstance(arg, chainer.Variable):
                 gpu_kwargs[key] = F.copy(arg, gpu_id)
             else:

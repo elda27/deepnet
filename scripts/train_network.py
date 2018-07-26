@@ -26,7 +26,9 @@ def main():
     parser = build_arguments()
     args = parser.parse_args()
 
+    use_gpu = False
     if len(args.gpu) > 1 or args.gpu[0] >= 0:
+        use_gpu = True
         for gpu in args.gpu:
             cuda.get_device(gpu).use()
 
@@ -100,7 +102,7 @@ def main():
     for model in deepnet.network.init._updatable_process:
         if not issubclass(type(model), chainer.Chain):
             continue
-        if args.gpu >=0:
+        if use_gpu:
             model.to_gpu()
         optimizer.setup(model)
     optimizers.append(optimizer)
@@ -145,8 +147,8 @@ def main():
 
     trainer = deepnet.utils.trainer.Trainer(
         network=network_manager,
-        train_iter=chainer.iterators.MultiprocessIterator(train_dataset, args.batch_size, shuffle=True, repeat=True),
-        valid_iter=chainer.iterators.MultiprocessIterator(valid_dataset, args.batch_size, shuffle=False, repeat=False),
+        train_iter=chainer.iterators.MultiprocessIterator(train_dataset, sum(args.batch_size), shuffle=True, repeat=True),
+        valid_iter=chainer.iterators.MultiprocessIterator(valid_dataset, sum(args.batch_size), shuffle=False, repeat=False),
         visualizers=visualizers,
         optimizer=optimizer_dict,
         logger=logger,
