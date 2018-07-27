@@ -2,15 +2,28 @@ from abc import abstractmethod
 import os.path
 from contextlib import ExitStack
 import chainer
+from itertools import zip_longest
 
 class Logger:
-    def __init__(self, output_filename, dump_variables):
+    def __init__(self, output_filename, dump_variables, variable_weights):
         self.output_filename = output_filename
         self.dump_variables = dump_variables
+        
         if os.path.exists(output_filename):
             os.remove(output_filename)
 
     def __call__(self, variables, is_valid=False):
+        dump_vars = {}
+        for var_name, weight in zip_longest(self.dump_variables, self.weights):
+            if var_name not in variables:
+                data[var_name] = ''
+            
+            if weight is not None or (isinstance(weight, str) and weight != ''):
+                data[var_name] = variables[var_name] * float(weight)
+                data[var_name + '.raw'] = variables[var_name]
+            else:
+                data[var_name] = variables[var_name]
+
         dump_vars = { var_name:variables[var_name] if var_name in variables else '' for var_name in self.dump_variables }
         self.dump(**dump_vars)
 
