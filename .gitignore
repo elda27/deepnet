@@ -8,6 +8,9 @@ debug/
 log/
 *.nc
 *.png
+*.mhd
+*.raw
+*.zraw
 *.npy
 update_scallop.bat
 train_ribcage_tlnet_use_mask.sh

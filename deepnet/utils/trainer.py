@@ -12,7 +12,12 @@ import subprocess
 import gc
 
 class Trainer:
-    def __init__(self, network, train_iter, valid_iter, visualizers, train_config, optimizer, logger, archive_dir, archive_nodes):
+    def __init__(self, 
+        network, train_iter, valid_iter, 
+        visualizers, train_config, optimizer, 
+        logger, archive_dir, archive_nodes,
+        postprocessor
+        ):
         self.network = network
         self.train_config = train_config
         
@@ -29,6 +34,7 @@ class Trainer:
         self.archive_nodes = archive_nodes
 
         self.visualizers = visualizers
+        self.postprocessor = postprocessor
         
         self.optimizer = optimizer
         
@@ -143,7 +149,10 @@ class Trainer:
                     else:
                         if isinstance(var, chainer.Variable):
                             valid_variables[var_name] += chainer.functions.copy(var, -1)
-    
+
+                # Post processing
+                self.postprocessor(variables, 'valid', True)
+
                 pbar.update(self.valid_iter.batch_size)
                 if self.n_max_valid_iter <= (i + 1) * self.valid_iter.batch_size:
                     break
@@ -154,6 +163,9 @@ class Trainer:
                 os.path.join(self.archive_dir, node_name +'_{:08d}.npz'.format(variables['__train_iteration__'])), 
                 self.network.get_node(node_name).model
                 )
+
+        # Post processing
+        self.postprocessor(variables, 'valid', False)
 
         # Compute mean variables
         for var_name in self.dump_variables:
@@ -166,6 +178,7 @@ class Trainer:
                     valid_variables[var_name] = float((var / denom).data)
         # Save visualized results
         for visualizer in self.visualizers:
+            visualizer(variables)
             visualizer.save()
             visualizer.clear()
 

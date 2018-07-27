@@ -1,12 +1,14 @@
 
 [config]
 input = [
-  "volume.patch",
+  "volume/patch",
   "case_name"
 ]
 
 logging = [
   '__train_iteration__', 
+  'train.loss_reconstruct', 'valid.loss_reconstruct',
+  'train.loss_latent_representation', 'valid.loss_latent_representation',
   'train.loss', 'valid.loss'
 ]
 
@@ -14,14 +16,18 @@ archive_nodes = ['CAE']
 optimizing_loss = ['loss']
 
 [hyper_parameter]
-n_encode_dim = 64
+n_encode_dim = 492
 n_layers = 3
 gaussian_sigma = 20
+
+weight_reconstruct = 1.0
+weight_lr = 5e4
 
 [[process]]
 label  = "CAE"
 type   = "network.cae"
 update = "loss"
+
 
 # Arguments
 n_dim = 3
@@ -30,10 +36,11 @@ encode_dim = "${hyper_parameter.n_encode_dim}"
 dropout = "dropout"
 use_batch_norm = true
 n_layers = "${hyper_parameter.n_layers}"
+latent_activation = true
 
 # Network declaration
 [[network]]
-input = "volume.patch"
+input = "volume/patch"
 process = "expand_dims"
 output = "volume_expanded"
 
@@ -52,7 +59,7 @@ output = "gpu_noisy_volume"
 
 sigma = "${hyper_parameter.gaussian_sigma}"
 
-## Reconstruct label
+## Reconstruct volume
 [[network]]
 input="gpu_noisy_volume"
 label="CAE"
@@ -60,10 +67,30 @@ process="CAE"
 output="gpu_reconstruct_volume"
 
 [[network]]
+input="gpu_reconstruct_volume"
+process="get_latent_representation"
+output="gpu_latent_representation"
+source="CAE.encoder"
+
+[[network]]
 input=[ "gpu_volume", "gpu_reconstruct_volume" ]
 process="loss.euclidean_distance"
-output="loss"
+output="loss_reconstruct"
 test=false
+
+[[network]]
+input="gpu_latent_representation"
+process="loss.penalty_sparse_encoding"
+output="loss_latent_representation"
+rho = 0.05
+
+[[network]]
+input = ["loss_reconstruct", "loss_latent_representation"]
+process = "reduce"
+operation="+"
+output = "loss"
+weights = ["${hyper_parameter.weight_reconstruct}", "${hyper_parameter.weight_lr}"]
+
 
 ## Volume rendering for debug
 # [[network]]
@@ -97,6 +124,23 @@ output = "diff_volume"
 train = false
 test = false
 
+# Post process
+[[postprocess]]
+type = "concat_patch"
+patch       = "volume/patch"
+crop_region = "volume/patch_region"
+case_name   = "case_name"
+source_volume = "volume"
+output_root = "volume_concat"
+
+[[postprocess]]
+type = "concat_patch"
+patch       = "gpu_reconstruct_volume"
+crop_region = "volume/patch_region"
+case_name   = "case_name"
+source_volume = "volume"
+output_root = "reconstruct_volume_concat"
+
 # Visualize declaration
 [[visualize]]
 type  = "image_write"
@@ -106,13 +150,23 @@ image_names = [
 output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__name__}_{__index__}.mhd'
 num_images = 3
 
-# [[visualize]]
-# type = "tile_image_visualizer"
-# output_filename = "${visualize_dir}/{__train_iteration__:08d}_tile.png"
-# tile_shape = [3, 3]
-# block_images =  [ 
-#     "roll_volume_drr_image", "pitch_volume_drr_image", "yaw_volume_drr_image",
-#     "roll_reconstruct_volume_drr_image", "pitch_reconstruct_volume_drr_image", "yaw_reconstruct_volume_drr_image"
-#   ]
-# block_shape = [2, 3]
+[[visualize]]
+type  = "image_write"
+image_names = [ 
+    "reconstruct_volume_concat/image"
+  ]
+array_variables = "volume_concat/case_name"
+output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__array__/volume_concat/case_name}_reconstruct.mhd'
+num_images = -1
+supress_exception = true
+
+[[visualize]]
+type  = "image_write"
+image_names = [ 
+    "volume_concat/image",
+  ]
+array_variables = "volume_concat/case_name"
+output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__array__/volume_concat/case_name}_image.mhd'
+num_images = -1
+supress_exception = true
 

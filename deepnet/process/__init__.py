@@ -20,6 +20,7 @@ from deepnet import utils
 from deepnet.process import drr, data_augmentation
 
 _registered_process = {
+    'chainer.mean': F.mean,
     'chainer.sigmoid': F.sigmoid,
     'chainer.softmax': F.softmax,
     'chainer.transpose': F.transpose,
@@ -322,7 +323,7 @@ def constrain_kernel(network):
 @register_process('loss.euclidean_distance')
 def euclidean_distance(x, t):
     linear_shape = (x.shape[0], functools.reduce(lambda x,y: x * y, x.shape[1:]))
-    return F.mean(F.batch_l2_norm_squared(F.reshape(x - t, linear_shape)))
+    return F.mean(F.sqrt(F.batch_l2_norm_squared(F.reshape(x - t, linear_shape))))
 
 @register_process('loss.total_softmax_cross_entropy')
 def total_softmax_cross_entropy(x, t, normalize=True):
@@ -370,3 +371,16 @@ def _make_overlap(labels):
     labels = _expand_background(labels)
     return F.argmax(labels, axis=1)
 
+import deepnet.network.init
+
+@register_process()
+def get_latent_representation(*_, source):
+    accessors = source.split('.')
+    proc = deepnet.network.init.get_process(accessors[0])
+    proc = utils.get_field(proc, accessors[1:-1])
+    return proc.stores[accessors[-1]]
+
+@register_process("loss.penalty_sparse_encoding")
+def penalty_sparse_encoding(vector, rho=0.05):
+    h = F.mean(vector, axis=0)
+    return F.sum(rho * F.log(rho / h) + (1 - rho) * F.log((1 - rho) / (1 - h)))

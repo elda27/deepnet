@@ -234,7 +234,7 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
         return cls.extensions[extension_field['type']](extension_field)
 
 class CachedDataset(GeneralDataset):
-    def __init__(self, config, indices, mode):
+    def __init__(self, config, indices, mode, construct_cache = True):
         super().__init__(config, indices)
         self.mode = mode
 
@@ -245,7 +245,15 @@ class CachedDataset(GeneralDataset):
             self.extensions.append(extension)
 
         self.cache = None
-        for i in range(super().__len__()):
+
+        if construct_cache:
+            self.construct_cache()
+
+    def construct_cache(self, iter_range = None):
+        if iter_range is None:
+            iter_range = range(super().__len__())
+            
+        for i in iter_range:
             stage_input = super().get_example(i)
             if self.cache is None:
                 self.cache = [ [] for _ in stage_input ]
