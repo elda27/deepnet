@@ -29,8 +29,7 @@ def main():
     use_gpu = False
     if len(args.gpu) > 1 or args.gpu[0] >= 0:
         use_gpu = True
-        for gpu in args.gpu:
-            cuda.get_device(gpu).use()
+        cuda.get_device(args.gpu[0]).use()
 
     assert len(args.batch_size) == len(args.gpu)
     assert args.step_index > 0
