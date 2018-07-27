@@ -16,12 +16,13 @@ archive_nodes = ['CAE']
 optimizing_loss = ['loss']
 
 [hyper_parameter]
-n_encode_dim = 492
-n_layers = 3
-gaussian_sigma = 20
+n_encode_dim = 512
+n_layers = 2
+n_res_layers = 4
+gaussian_sigma = 200
 
 weight_reconstruct = 1.0
-weight_lr = 5e4
+weight_lr = 1e4
 
 [[process]]
 label  = "CAE"
@@ -36,6 +37,7 @@ encode_dim = "${hyper_parameter.n_encode_dim}"
 dropout = "dropout"
 use_batch_norm = true
 n_layers = "${hyper_parameter.n_layers}"
+n_res_layers = "${hyper_parameter.n_res_layers}"
 latent_activation = true
 
 # Network declaration
