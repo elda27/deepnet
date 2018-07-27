@@ -38,10 +38,10 @@ class Encoder(chainer.Chain):
         
         self.n_end_units = n_unit
 
-        self.layers['c{}1'.format(n_layers)] = utils.CBR(n_dim, n_unit, 1, stride=3, bn=use_batch_norm, sample='down', activation=F.relu, dropout=dropout)
-
         for i in range(n_res_layers):
             self.layers['res' + str(i)] = utils.ResBlock(n_dim, n_unit, n_unit, n_unit)
+
+        self.layers['c{}1'.format(n_layers)] = utils.CBR(n_dim, n_unit, 1, stride=3, bn=use_batch_norm, sample='down', activation=F.relu, dropout=dropout)
 
         self.layers['fc'] = L.Linear(None, out_size=encode_dim)
 
@@ -55,13 +55,13 @@ class Encoder(chainer.Chain):
             h = self.layers['c{}2'.format(i)](h)
             self.stores['c{}2'.format(i)] = h
         
-        h = self.layers['c{}1'.format(self.n_layers)](h)
-        self.stores['c{}1'.format(self.n_layers)] = h
-        
         for i in range(0, self.n_res_layers):
             h = self.layers['res{}'.format(i)](h)
             #self.stores['res{}'.format(i)] = h
-        
+
+        h = self.layers['c{}1'.format(self.n_layers)](h) # Flatten layers
+        self.stores['c{}1'.format(self.n_layers)] = h
+                
         h = self.layers['fc'](h)
         self.stores['fc'] = h
         return h
