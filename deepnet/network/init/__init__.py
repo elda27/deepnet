@@ -1,6 +1,7 @@
 import deepnet.config
 from deepnet import process
 from deepnet.utils import network, visualizer
+from deepnet.utils.config import get_global_config
 import hashlib
 from datetime import datetime
 from time import sleep
@@ -145,7 +146,9 @@ def build_networks(config, step=None):
             _updatable_process.append(proc)
             if not updatable:
                 warnings.warn('A defined network is used on network stream but an not updatable network. {}'.format(process_names[0]))
-            node_type = network.ParallelNetworkNode
+            
+            if len(get_global_config('gpu_id')) > 1:
+                node_type = network.ParallelNetworkNode
 
         elif process_name in process._registered_process:
             proc = process._registered_process[process_name]
