@@ -299,11 +299,16 @@ def expand_dims(*input, axis=1):
     return output
 
 @register_process()
-def diff_image(*input):
+def diff_image(*input, absolute=False):
     output = []
+    abs_method = None
+    if absolute:
+        abs_method = F.absolute
+    else:
+        abs_method = lambda x: x
+
     for i, j in zip(input[::2], input[1::2]):
-        xp = chainer.cuda.get_array_module(i)
-        output.append(i - j)
+        output.append(abs_method(i - j))
     return output
 
 @register_process('loss.constrain_kernel')
@@ -359,7 +364,7 @@ from deepnet.utils import config
 def get_latent_representation(*_, source):
     accessors = source.split('.')
     network_manager = config.get_global_config('main_network')
-    return network_manager[accessors[0]].get_param(accessors[1:])
+    return network_manager.get_node(accessors[0]).get_param(accessors[1:])
 
 @register_process("loss.penalty_sparse_encoding")
 def penalty_sparse_encoding(vector, rho=0.05):
