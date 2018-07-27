@@ -6,6 +6,7 @@ __pycache__
 .DS_Store
 debug/
 log/
+tmp/
 *.nc
 *.png
 *.mhd
