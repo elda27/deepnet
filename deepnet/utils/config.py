@@ -3,6 +3,7 @@ from contextlib import contextmanager
 _global_config = {
     'gpu_id': -1,
     'batch_size': 5,
+    'main_network': None,
 }
 
 def set_global_config(key, value):
