@@ -79,7 +79,8 @@ def main():
     logger = [ 
         deepnet.utils.logger.CsvLogger(
             os.path.join(log_dir, 'log_step{}.csv'.format(args.step_index)), 
-            network_config['config']['logging']
+            network_config['config']['logging'],
+            network_config['config']['log_weights']
             ) 
         ]
     archive_nodes = network_config['config']['archive_nodes']
