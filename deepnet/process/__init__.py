@@ -340,6 +340,25 @@ def total_softmax_cross_entropy(x, t, normalize=True):
     loss = [ F.softmax_cross_entropy(F.concat((bg_xs, xs[i]), axis=1), ts[i], normalize=normalize) for i in range(xs.shape[0]) ]
     return sum(loss) / xs.shape[0]
 
+@register_process('loss.gradient_correlation')
+def gradient_correlation(x, t, normalize = True):
+    assert x.ndim == t.ndim
+    n_grad_dim = x.ndim - 2
+
+    gc = []
+    for i in range(n_grad_dim):
+        kernel_shape = tuple( np.roll( (3,) + (1, ) * (n_grad_dim - 1), shift=i))
+        w = cp.array([-1, 0, 1]).reshape((1, 1,) + kernel_shape)
+        x_grad = F.convolution_nd(x, w)
+        t_grad = F.convolution_nd(t, w)
+
+        x_norm_grad = x_grad - F.mean(x_grad)
+        t_norm_grad = t_grad - F.mean(t_grad)
+        
+        gc.append( F.sum( x_norm_grad * t_norm_grad ) / (x_norm_grad ** 2 * t_norm_grad ** 2) )
+
+    return sum(gc) / len(gc)
+
 def _expand_background(labels):
     xp = cp if isinstance(labels.array, cp.ndarray) else np
     empty_label = xp.ones((labels.shape[0], 1) + labels.shape[2:], xp.float32) * 1e-3
