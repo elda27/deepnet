@@ -10,6 +10,7 @@ from deepnet import utils
 import os.path
 import subprocess
 import gc
+from time import sleep
 
 class Trainer:
     def __init__(self, 
@@ -18,6 +19,9 @@ class Trainer:
         logger, archive_dir, archive_nodes,
         postprocessor
         ):
+        
+        utils.config.set_global_config('main_network', network)
+
         self.network = network
         self.train_config = train_config
         
@@ -62,6 +66,7 @@ class Trainer:
                 # Inference current batch.
                 for stage_input in input_vars:
                     self.inference(stage_input, is_train=True)
+                sleep(1e-3)
                 
                 # Update variables.
                 variables.update(self.network.variables)
@@ -123,6 +128,8 @@ class Trainer:
             chainer.no_backprop_mode():
             self.valid_iter.reset()
             for i, batch in enumerate(self.valid_iter):
+                sleep(1e-3)
+
                 self.valid_iteration = i
                 variables['__iteration__'] = i
                 variables['__valid_iteration__'] = self.valid_iteration
@@ -172,7 +179,7 @@ class Trainer:
             var = valid_variables[var_name]
             denom = float(self.n_max_valid_iter) / self.valid_iter.batch_size
             if isinstance(var, chainer.Variable):
-                if self.train_config['gpu'] >= 0:
+                if self.train_config['gpu'][0] >= 0:
                     valid_variables[var_name] = float(chainer.cuda.to_cpu((var / denom).data))
                 else:
                     valid_variables[var_name] = float((var / denom).data)
@@ -201,7 +208,7 @@ class Trainer:
             display_var_formats.append(var_name + '=' +'{' + var_format + '}')
             if isinstance(var, chainer.Variable):
                 value = None
-                if self.train_config['gpu'] >= 0:
+                if self.train_config['gpu'][0] >= 0:
                     value = chainer.cuda.to_cpu(var.data)
                 else:
                     value = var.data

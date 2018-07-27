@@ -117,6 +117,7 @@ class ParallelNetworkNode(NetworkNode):
             )
         self.parallel_models = [ self.model ]
         self.gpu_ids = config.get_global_config('gpu_id')
+        self.batch_size = config.get_global_config('batch_size')
         self.is_serial = False
         if not isinstance(self.gpu_ids, (tuple, list)):
             self.gpu_ids = [ self.gpu_ids ]
@@ -142,34 +143,37 @@ class ParallelNetworkNode(NetworkNode):
             model.copyparams(self.model)
 
         results = []
-        for gpu_id, model in zip(self.gpu_ids, self.parallel_models):
-            gpu_args, gpu_kwargs = self.copy_gpu(gpu_id, *args, **kwargs)
+        offset = 0
+        for gpu_id, batch_size, model in zip(self.gpu_ids, self.batch_size, self.parallel_models):
+            gpu_args, gpu_kwargs = self.copy_gpu(gpu_id, slice(offset, offset + batch_size), *args, **kwargs)
             result = model(*gpu_args, **gpu_kwargs)
             if gpu_id == 0:
                 results.append(result)
             else:
                 results.append(F.copy(result, 0))
+            offset += batch_size
         
-        return F.concat(results)
+        return F.concat(results, axis=0)
 
-    def copy_gpu(self, gpu_id, *args, **kwargs):
-        if gpu_id == 0:
-            return (args, kwargs)
-        
-        batch_size = config.get_global_config('batch_size')
-
+    def copy_gpu(self, gpu_id, index_slice, *args, **kwargs):
         gpu_args = []
         gpu_kwargs = {}
         
         for arg in args:
             if isinstance(arg, chainer.Variable):
-                gpu_args.append(F.copy(arg, gpu_id))
+                tmp = F.copy(arg[index_slice], gpu_id)
+                if tmp.ndim != arg.ndim:
+                    tmp = F.expand_dims(tmp, axis=0)
+                gpu_args.append(tmp)
             else:
                 gpu_args.append(arg)
         
         for key, arg in kwargs.items():
             if isinstance(arg, chainer.Variable):
-                gpu_kwargs[key] = F.copy(arg, gpu_id)
+                tmp = F.copy(arg[index_slice], gpu_id)
+                if tmp.ndim != arg.ndim:
+                    tmp = F.expand_dims(tmp, axis=0)
+                gpu_kwargs[key] = tmp
             else:
                 gpu_kwargs[key] = arg
                 
@@ -177,13 +181,13 @@ class ParallelNetworkNode(NetworkNode):
 
     def get_param(self, fields):
         if self.is_serial:
-            return super().get_param(*args, **kwargs)
+            return super().get_param(fields)
 
         results = []
         for gpu_id, model in zip(self.gpu_ids, self.parallel_models):
-            proc = utils.get_field(self.model, fields[:-1])
+            proc = utils.get_field(model, fields[:-1])
             results.append(F.copy(proc.stores[fields[-1]], 0))
-        return F.concat(results)
+        return F.concat(results, axis=0)
 
     def update(self):
         for model in self.parallel_models:
@@ -289,7 +293,11 @@ class NetworkWalker:
             already_nodes.extend(self.search_next_node(node))
 
         for node in already_nodes:
-            output = self.invoke(node)
+            try:
+                output = self.invoke(node)
+            except Exception:
+                print('Uncaught exception occured: {}, {}'.format(node.name, node.model))
+                raise
             self.update_variables(node, output)
 
         return already_nodes
