@@ -11,13 +11,11 @@ except ImportError:
     NO_CUPY = True
     pass
 
-import random
-
 import functools
 from itertools import cycle
 
 from deepnet import utils
-from deepnet.process import drr, data_augmentation
+from deepnet.process import data_augmentation
 
 _registered_process = {
     'chainer.mean': F.mean,
@@ -28,8 +26,16 @@ _registered_process = {
     'chainer.sigmoid_cross_entropy': F.sigmoid_cross_entropy,
     'chainer.softmax_cross_entropy': F.softmax_cross_entropy,
     'chainer.batch_l2_norm_squared': F.batch_l2_norm_squared,
-    'HU2Myu': drr.pydrr.utils.HU2Myu,
-}
+    }
+
+_ENABLE_PYCUDA_FUNCTION = False
+try:
+    from deepnet.process.drr import VolumeProjector
+
+    _registered_process['HU2Myu'] = drr.pydrr.utils.HU2Myu
+    _ENABLE_PYCUDA_FUNCTION = True
+except ImportError:
+    pass
 
 def register_process(name = None):
     def _register_process(func):
@@ -252,24 +258,30 @@ def volume_rendering(
     volume, spacing, case_name = None, 
     hu_volume=True, pose=[], **kwargs
     ):
+    assert _ENABLE_PYCUDA_FUNCTION
 
     if len(pose) == 0:
-        pose.append([0, 0, 0])
+        pose.append([0, 0, 0, 0, 0, 0])
 
-    projector = drr.VolumeProjector(**kwargs)
+    projector = GpuVolumeProjector.VolumeProjector(**kwargs)
 
     cpu_volume = utils.unwrapped(volume) # :TODO: Support cupy to pycuda translation.
     if hu_volume:
-        cpu_volume = drr.pydrr.utils.HU2Myu(cpu_volume, 0.02)
+        cpu_volume = GpuVolumeProjector.pydrr.utils.HU2Myu(cpu_volume, 0.02)
 
+    result = None
     if cpu_volume.ndim >= 4:
         images = []
         for i in range(len(cpu_volume)):
             i_volume = cpu_volume[i]
-            images.append(projector(i_volume, spacing[i], case_name[i] if case_name is not None else None))
-        return images
+            images.append(projector(i_volume, spacing[i], case_name[i] if case_name is not None else None, pose))
+        result = chainer.Variable(np.transpose(np.array(images), (0, 3, 2, 1)))
     else:
-        return projector(cpu_volume, spacing, case_name)
+        result = chainer.Variable(projector(cpu_volume, spacing, case_name, pose))
+
+    result.to_gpu()
+    result.data.device.synchronize()
+    return result
 
 @register_process()
 def random_transform(
@@ -278,7 +290,7 @@ def random_transform(
     rotation=0.0,    # [deg]
     translation=0.0, # [%]
     zoom=0.0,        # [%]
-    intensity=0.0,   # [intensity]
+    intensity=0.0   # [intensity]
     ):
 
     outputs = []
@@ -347,23 +359,30 @@ def total_softmax_cross_entropy(x, t, normalize=True):
     return sum(loss) / xs.shape[0]
 
 @register_process('loss.gradient_correlation')
-def gradient_correlation(x, t, normalize = True):
+def gradient_correlation(x, t, normalize = True, absolute = False):
     assert x.ndim == t.ndim
     n_grad_dim = x.ndim - 2
 
     gc = []
     for i in range(n_grad_dim):
         kernel_shape = tuple( np.roll( (3,) + (1, ) * (n_grad_dim - 1), shift=i))
-        w = cp.array([-1, 0, 1]).reshape((1, 1,) + kernel_shape)
+        w = cp.array([-1.0, 0.0, 1.0]).reshape((1, 1,) + kernel_shape)
         x_grad = F.convolution_nd(x, w)
         t_grad = F.convolution_nd(t, w)
 
-        x_norm_grad = x_grad - F.mean(x_grad)
-        t_norm_grad = t_grad - F.mean(t_grad)
-        
-        gc.append( F.sum( x_norm_grad * t_norm_grad ) / (x_norm_grad ** 2 * t_norm_grad ** 2) )
+        x_grad_mean = F.mean(x_grad, axis=tuple(range(1, x.ndim)))
+        t_grad_mean = F.mean(t_grad, axis=tuple(range(1, x.ndim)))
 
-    return sum(gc) / len(gc)
+        repeat_shape = (1, ) + x_grad.shape[1:]
+        x_grad_mean = F.reshape(F.repeat(x_grad_mean, functools.reduce(lambda x, y: x * y, repeat_shape)), x_grad.shape)
+        t_grad_mean = F.reshape(F.repeat(t_grad_mean, functools.reduce(lambda x, y: x * y, repeat_shape)), x_grad.shape)
+        
+        x_norm_grad = x_grad - x_grad_mean
+        t_norm_grad = t_grad - t_grad_mean
+        
+        gc.append( F.sum( x_norm_grad * t_norm_grad ) / (F.sqrt(F.sum(x_norm_grad ** 2)) * F.sqrt(F.sum(t_norm_grad ** 2))) )
+
+    return F.absolute(sum(gc) / len(gc))
 
 def _expand_background(labels):
     xp = cp if isinstance(labels.array, cp.ndarray) else np
@@ -376,7 +395,7 @@ def _make_overlap(labels):
     labels = _expand_background(labels)
     return F.argmax(labels, axis=1)
 
-import deepnet.network.init
+
 from deepnet.utils import config
 
 @register_process()
