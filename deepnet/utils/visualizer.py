@@ -127,19 +127,33 @@ class ImageWriter(Visualizer):
         figs = self.get_figure()
         for name, images in figs.items():
             for i, image in enumerate(images):
-                spacing = None
-                if self.spacing in self.variables:
-                    spacings = self.variables[self.spacing]
-                    spacing = spacings[i % len(spacings)]
-                    if len(spacing) < image.ndim:
-                        spacing = tuple(spacing) + (1,) * (image.ndim - len(spacing))
+                preset = dict(
+                    __index__=i,
+                    __name__=name,
+                )
+                spacing = self.get_spacing(image.ndim, i)
+                
+                if 'case_name' in self.variables:
+                    preset['__case_name__'] = self.variables['case_name'][i]
 
                 array_variables = {}
                 for key in self.array_variables:
                     array_variables['__array__/' + key] = self.variables[key][i]
 
-                save_image(self.output_filename.format(**self.variables, **array_variables, __index__=i, __name__=name), image, spacing)
+                save_image(self.output_filename.format(**self.variables, **array_variables, **preset), image, spacing)
         self.images.clear()
+
+    def get_spacing(self, image_dim, index):
+        if isinstance(self.spacing, (list, tuple)):
+            spacing = self.spacing
+        elif self.spacing in self.variables:
+            spacings = self.variables[self.spacing]
+            spacing = spacings[index % len(spacings)]
+        
+        spacing = tuple(spacing)
+        if len(spacing) < image_dim:
+            spacing = spacing + (1,) * (image_dim - len(spacing))
+        return spacing
 
     def get_figure(self):
         return self.images
