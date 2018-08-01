@@ -13,10 +13,12 @@ class Segnet(chainer.Chain):
     def __init__(self,
         n_dim,
         in_channel, 
+        output_shape = None,
         decoder = None, 
         use_skipping_connection='none'
         ):
         self.n_dim = n_dim
+        self.output_shape = output_shape
         
         super().__init__()
         self.use_skipping_connection = use_skipping_connection
@@ -26,6 +28,7 @@ class Segnet(chainer.Chain):
                 n_dim, in_channel,
                 encode_dim= self.decoder.input_dim,
                 n_layers= self.decoder.n_layers,
+                n_res_layers= self.decoder.n_res_layers,
                 n_units = self.decoder.n_units,
                 dropout = self.decoder.dropout,
                 use_batch_norm= self.decoder.use_batch_norm
@@ -45,7 +48,14 @@ class Segnet(chainer.Chain):
         self.decoder.use_skipping_connection = self.use_skipping_connection
 
         h = self.decoder(h, connections=self.encoder.stores)
-        h = utils.crop(h, x.shape, self.n_dim)
+
+        output_shape = None
+        if self.output_shape is None:
+            output_shape = x.shape
+        else:
+            output_shape = (x.shape[0], self.decoder.out_channel) + tuple(self.output_shape)
+        h = utils.crop(h, output_shape, self.decoder.n_dim)
+
         self.stores['decoder'] = h
 
         self.decoder.use_skipping_connection = old_skip_flag
