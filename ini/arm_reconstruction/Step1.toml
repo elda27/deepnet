@@ -7,13 +7,15 @@ input = [
 logging = [
   '__train_iteration__', 
   'train.loss_reconstruct', 'valid.loss_reconstruct',
-  'train.loss_latent_representation', 'valid.loss_latent_representation',
+  'train.loss_gradient', 'valid.loss_gradient',
+  #'train.loss_latent_representation', 'valid.loss_latent_representation',
   'train.loss', 'valid.loss'
 ]
 logging_weights = [
   "", 
   "${hyper_parameter.weight_reconstruct}", "${hyper_parameter.weight_reconstruct}", 
-  "${hyper_parameter.weight_lr}", "${hyper_parameter.weight_lr}",
+  "${hyper_parameter.weight_gradient}", "${hyper_parameter.weight_gradient}", 
+  #"${hyper_parameter.weight_lr}", "${hyper_parameter.weight_lr}",
   "", ""
 ]
 
@@ -21,13 +23,14 @@ archive_nodes = ['CAE']
 optimizing_loss = ['loss']
 
 [hyper_parameter]
-n_encode_dim = 492
+n_encode_dim = 512
 n_layers = 3
 gaussian_sigma = 20
 n_res_layers = 4
 
 weight_reconstruct = 1.0
-weight_lr = 1e4
+weight_gradient = -1e4
+#weight_lr = 1e4
 
 [[process]]
 label  = "CAE"
@@ -89,25 +92,30 @@ output="loss_reconstruct"
 test=false
 
 [[network]]
-input="gpu_reconstruct_volume"
-process="get_latent_representation"
-output="gpu_latent_representation"
-source="CAE.encoder"
-test=false
+input = ["gpu_volume", "gpu_reconstruct_volume"]
+process = "loss.gradient_correlation"
+output = "loss_gradient"
+
+#[[network]]
+#input="gpu_reconstruct_volume"
+#process="get_latent_representation"
+#output="gpu_latent_representation"
+#source="CAE.encoder"
+#test=false
+
+#[[network]]
+#input="gpu_latent_representation"
+#process="loss.penalty_sparse_encoding"
+#output="loss_latent_representation"
+#rho = 0.05
+#test=false
 
 [[network]]
-input="gpu_latent_representation"
-process="loss.penalty_sparse_encoding"
-output="loss_latent_representation"
-rho = 0.05
-test=false
-
-[[network]]
-input = ["loss_reconstruct", "loss_latent_representation"]
+input = ["loss_reconstruct", "loss_gradient"]
 process = "reduce"
 operation="+"
 output = "loss"
-weights = ["${hyper_parameter.weight_reconstruct}", "${hyper_parameter.weight_lr}"]
+weights = ["${hyper_parameter.weight_reconstruct}", "${hyper_parameter.weight_gradient}"]
 test=false
 
 [[network]]
@@ -122,7 +130,7 @@ absolute = true
 [[visualize]]
 type  = "image_write"
 image_names = [ 
-  "diff_volume", "gpu_reconstruct_volume", "gpu_volume" 
+  "volume", "diff_volume", "gpu_reconstruct_volume", "gpu_volume" ,
   ]
 output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__name__}_{__index__}.mhd'
 num_images = 3
