@@ -224,9 +224,11 @@ def initialize_prelearned_model(field, log_root_dir, step_index):
 
     name = field['name']
     created_model = get_process(name)
-    archive_filename = list(
-        glob.glob(os.path.join(log_root_dir, 'model_step' + str(step_index), name + '_*.npz'))
-    )[-1]
+
+    model_glob_str = os.path.join(log_root_dir, 'model_step' + str(step_index), name + '_*.npz')
+    found_models = glob.glob(model_glob_str)
+    assert len(found_models) != 0, 'Model not found:' + model_glob_str
+    archive_filename = found_models[-1]
     
     load_npz(archive_filename, created_model)
     
