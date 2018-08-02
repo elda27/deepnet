@@ -18,7 +18,7 @@ logging_weights = [
   "",
   "${hyper_parameter.weight_reconstruct}", "${hyper_parameter.weight_reconstruct}",
   "${hyper_parameter.weight_gradient}", "${hyper_parameter.weight_gradient}",
-  "${hyper_parameter.weight_latent_representation}", "hyper_parameter.weight_latent_representation",
+  "${hyper_parameter.weight_latent_representation}", "${hyper_parameter.weight_latent_representation}",
   "", ""
 ]
 
