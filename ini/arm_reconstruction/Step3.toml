@@ -1,49 +1,65 @@
 
 [config]
-
 input = [
-  "image", "label"
+  "volume",
+  "spacing",
+  "projections",
+  "projections_spacing"
 ]
 
 logging = [
-  '__train_iteration__', 
-  'train.loss_sigmoid', 'valid.loss_sigmoid',
-  'train.loss_softmax', 'valid.loss_softmax',
+  '__train_iteration__',
+  'train.loss_euclidean', 'valid.loss_euclidean',
+  'train.loss_gradient', 'valid.loss_gradient',
+  'train.loss_latent_representation', 'valid.loss_latent_representation',
   'train.loss', 'valid.loss'
 ]
+logging_weights = [
+  "",
+  "${hyper_parameter.weight_reconstruct}", "${hyper_parameter.weight_reconstruct}",
+  "${hyper_parameter.weight_gradient}", "${hyper_parameter.weight_gradient}",
+  "${hyper_parameter.weight_latent_representation}", "hyper_parameter.weight_latent_representation",
+  "", ""
+]
 
-archive_nodes = [ 'CAE', 'Segnet' ]
-optimizing_loss = [ 'loss']
+archive_nodes = ['Segnet']
+optimizing_loss = ['loss']
 freezing_layer = [ 'CAE.encoder' ]
 
 [hyper_parameter]
-n_dim = 2
-in_channel = 1
-n_class = 14
-n_encode_dim = 256
+n_encode_dim = 512
+n_layers = 3
+gaussian_sigma = 20
+n_res_layers = 4
 
-# loss weights
-lw_sigmoid = 2.0
-lw_softmax = 1.0
-lw_code = 6.0
+weight_reconstruct = 1.0
+weight_gradient = -1e4
+weight_latent_representation = 1e4
 
 [[process]]
 label  = "CAE"
 type   = "network.cae"
 
 # Arguments
-n_dim = "${hyper_parameter.n_dim}"
-in_out_channel = "${hyper_parameter.n_class}"
+n_dim = 3
+in_out_channel = 1
 encode_dim = "${hyper_parameter.n_encode_dim}"
 dropout = "dropout"
 use_batch_norm = true
+n_layers = "${hyper_parameter.n_layers}"
+latent_activation = true # For sparse penalty
 
 [[process]]
 label = "Segnet"
 type = "network.tl-net.segnet"
+update = "loss"
 
-n_dim = "${hyper_parameter.n_dim}"
-in_channel = 1
+decoder = "CAE.decoder"
+
+n_dim = 2
+output_shape = [64, 64, 64]
+
+in_channel = 2
 
 [[initialize]]
 mode = "load"
@@ -53,117 +69,94 @@ from_step = 1
 [[initialize]]
 mode = "load"
 name = "Segnet"
+from_step = 2
 
 # Network declaration
 [[network]]
-input=["image", "label"]
-process="to_gpu"
-output=["gpu_image", "gpu_label"]
+input = "projections"
+process = "to_gpu"
+output = "gpu_rendering_image"
 
-## Segmentation
 [[network]]
-input  = "gpu_image"
+input = "volume"
+process = "expand_dims"
+axis = 1
+output = "volume_expanded"
+
+[[network]]
+input   = "volume_expanded"
+process = "to_gpu"
+output  = "gpu_volume"
+
+[[network]]
+input="gpu_rendering_image"
 process = "Segnet"
-label  = "Segnet"
-output = "gpu_raw_pred_label"
+label   = "Segnet"
+output  = "gpu_reconstruct_volume"
 
-## Encode groudtruth label and pred label
 [[network]]
-input = "gpu_pred_label"
+input = "gpu_volume"
 process = "CAE.encoder"
-output = "gpu_pred_code"
+output = "gpu_volume_latent"
 
 [[network]]
-input = "gpu_label"
+input = "gpu_reconstruct_volume"
 process = "CAE.encoder"
-output = "gpu_groundtruth_code"
+output = "gpu_reconstruct_volume_latent"
 
-## Activated pred label
+# Loss calculation
 [[network]]
-input   = "gpu_raw_pred_label"
-process = "chainer.sigmoid"
-output  = "gpu_pred_label"
-
-## Losses
-[[network]]
-input  ="gpu_label"
-process="cast_type"
-dtype='int32'
-output ="i_gpu_label"
-test = false
-
-[[network]]
-input=[ "gpu_raw_pred_label", "i_gpu_label" ]
-process="chainer.sigmoid_cross_entropy"
-output="loss_sigmoid"
+input=[ "gpu_volume", "gpu_reconstruct_volume" ]
+process="loss.euclidean_distance"
+output ="loss_euclidean"
 test=false
 
 [[network]]
-input   = [ "gpu_pred_code", "gpu_groundtruth_code" ]
-process = "loss.euclidean"
-output  = "loss_code"
+input = ["gpu_volume", "gpu_reconstruct_volume"]
+process = "loss.gradient_correlation"
+output = "loss_gradient"
 
 [[network]]
-input=[ "gpu_pred_label", "gpu_label" ]
-process="loss.total_softmax_cross_entropy"
-output="loss_softmax"
-test=false
-
+input = ["gpu_volume_latent", "gpu_reconstruct_volume_latent"]
+process = "loss.euclidean_distance"
+output = "loss_latent_representation"
 
 [[network]]
-input = ["loss_sigmoid", "loss_softmax", 'loss_code']
-output = "loss"
+input = ["loss_euclidean", "loss_gradient", "loss_latent_representation"]
 process = "reduce"
-operation = "+"
-weight = [ 
-  "${hyper_parameter.lw_sigmoid}", 
-  "${hyper_parameter.lw_softmax}", 
-  "${hyper_parameter.lw_code}" 
-  ]
+operation="+"
+output = "loss"
+weights = [
+    "${hyper_parameter.weight_reconstruct}",
+    "${hyper_parameter.weight_gradient}",
+    "${hyper_parameter.weight_latent_representation}"
+]
+test=false
+
+[[network]]
+input = ["gpu_reconstruct_volume", "gpu_volume"]
+process= "diff_image"
+output = "diff_volume"
+train = false
 test = false
-
-## Index to Color label
-[[network]]
-input   = [ "gpu_label", "gpu_pred_label" ]
-process = "make_overlap_label"
-output  = [ "gpu_color_label", "gpu_color_pred_label"]
-train=false
-test=false
-
-## Blend image and label
-[[network]]
-input = ["gpu_image", "gpu_color_label", "gpu_image", "gpu_color_pred_label"]
-process = "blend_image"
-output = ["gpu_blend_label", "gpu_blend_pred_label"]
-train=false
-test=false
-
+absolute = true
 
 # Visualize declaration
 [[visualize]]
 type  = "image_write"
-image_names = [ 
-  "gpu_image", "gpu_pred_label", "gpu_label" 
+image_names = [
+  "volume", "diff_volume", "gpu_reconstruct_volume", "gpu_volume"
   ]
-output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__name__}_{__index__}.mhd'
+spacing = "spacing"
+output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__case_name__}_{__name__}_{__index__}.mhd'
 num_images = 3
 
 [[visualize]]
-type = "tile_image_visualizer"
-output_filename = "${visualize_dir}/{__train_iteration__:08d}_tile.png"
-tile_shape = [5, 5]
-block_images =  [ 
-  "gpu_image", "gpu_color_label",      "gpu_blend_label",
-  "gpu_image", "gpu_color_pred_label", "gpu_blend_pred_label",
+type  = "image_write"
+image_names = [
+  "gpu_rendering_image"
   ]
-block_shape = [2, 3]
+spacing = "projections_spacing"
+output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__case_name__}_{__name__}_{__index__}.mhd'
+num_images = 3
 
-## Nch image visualizer
-[[visualize]]
-type = "nch_visualizer"
-output_filename = "${visualize_dir}/{__train_iteration__:08d}_nch_tile.png"
-num_rows = 5
-n_ch = "${hyper_parameter.n_class}"
-n_ch_images = ["gpu_label", "gpu_pred_label"]
-overlap_images = [ "gpu_blend_label", "gpu_blend_pred_label" ]
-subtract = [ ['gpu_label', 'gpu_pred_label'] ]
