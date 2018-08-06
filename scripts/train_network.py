@@ -20,11 +20,15 @@ from functools import reduce
 from itertools import cycle
 import json
 import log_util
-
+from logging import getLogger
 
 def main():
+    logger = getLogger(__name__)
+
     parser = build_arguments()
     args = parser.parse_args()
+
+    logger.debug(vars(args))
 
     use_gpu = False
     if len(args.gpu) > 1 or args.gpu[0] >= 0:
@@ -34,8 +38,8 @@ def main():
     assert len(args.batch_size) == len(args.gpu)
     assert args.step_index > 0
 
-    deepnet.utils.config.set_global_config('gpu_id', args.gpu)
-    deepnet.utils.config.set_global_config('batch_size', args.batch_size)
+    deepnet.core.config.set_global_config('gpu_id', args.gpu)
+    deepnet.core.config.set_global_config('batch_size', args.batch_size)
 
     # Load configs
     dataset_config = deepnet.config.load(args.dataset_config)
@@ -77,10 +81,12 @@ def main():
     network_config = update_log_dir(network_config, log_dirs) # Update log directory
     network_config['hyper_parameter'].update(parse_hyper_parameter(args.hyper_param, network_config['hyper_parameter']))
     network_config = deepnet.config.expand_variable(network_config)
-    network_manager, visualizers = deepnet.network.init.build_networks(network_config)
+    network_manager, visualizers = deepnet.core.build_networks(network_config)
 
     # Initialize network
-    deepnet.network.init.initialize_networks(log_dir, args.step_index, network_config)
+
+    for init_field in network_config.get('initialize', []):
+        deepnet.core.initialize_networks(**init_field)
 
     # Setup post processor
     postprocessor = deepnet.utils.postprocess.PostProcessManager(network_config.get('postprocess', []))
@@ -99,7 +105,7 @@ def main():
     # Setup optimizer
     optimizers = []
     optimizer = chainer.optimizers.Adam(args.lr_rate)
-    for model in deepnet.network.init._updatable_process:
+    for model in deepnet.core.get_updatable_process_list():
         if not issubclass(type(model), chainer.Chain):
             continue
         if use_gpu:
@@ -110,7 +116,7 @@ def main():
     # Freeze to update layer
     for layer_name in network_config['config'].get('freezing_layer', []):
         layers = layer_name.split('.')
-        model = deepnet.network.init.get_process(layers[0])
+        model = deepnet.core.registration .get_process(layers[0])
         deepnet.utils.get_field(model, layers[1:]).disable_update()
 
     # Save variables
@@ -155,7 +161,8 @@ def main():
         archive_dir=archive_dir,
         archive_nodes=archive_nodes,
         train_config=train_config,
-        postprocessor=postprocessor
+        postprocessor=postprocessor,
+        redirect=parse_redirect_string(args.redirect)
     )
 
     trainer.train()
@@ -189,6 +196,8 @@ def build_arguments():
     parser.add_argument('--log-index', type=int, default=None, help='Log direcotry index for training.')
     parser.add_argument('--step-index', type=int, default=1, help='step index')
 
+    parser.add_argument('--redirect', type=str, default=None, nargs='*', help='To redirect input variables.')
+
     return parser
 
 def str2bool(string):
@@ -218,6 +227,13 @@ def parse_hyper_parameter(params, defined_params):
         except:
             raise TypeError('Invalid value detected on the cast:{}, str->{}'.format(value, type_))
     return result_params
+
+def parse_redirect_string(strings):
+    result = {}
+    for string in strings:
+        src, dst = string.split(':')
+        result[src] = dst
+    return result
 
 def update_log_dir(network_config, log_dir):
     network_config['log_dir'] = log_dir['root']
