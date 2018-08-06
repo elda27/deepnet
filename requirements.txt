@@ -1,0 +1,12 @@
+matplotlib
+numpy
+scipy
+scikit-image
+
+toml
+opencv-python
+
+pandas
+
+#cupy
+chainer >= 4.0.0
