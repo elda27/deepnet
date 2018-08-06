@@ -1,4 +1,24 @@
+from deepnet.core.registration import register_process
 from . import image_augmentation, volume_augmentation
+
+@register_process()
+def random_transform(
+    *input,
+    mode='image',
+    rotation=0.0,    # [deg]
+    translation=0.0, # [%]
+    zoom=0.0,        # [%]
+    intensity=0.0   # [intensity]
+    ):
+
+    outputs = []
+    for image in input:
+        outputs.append(augmentations[mode](
+            image,
+            rotation, translation, zoom,
+            intensity, 
+        ))
+    return outputs
 
 augmentations = {}
 def register_augmentation(name):

@@ -7,9 +7,6 @@ import numpy as np
 import functools
 import random
         
-from deepnet.network.init import register_network
-from deepnet.utils.network import IterableProcessor
-
 
 def bayesian_dropout(x, ratio=.5, **kwargs):
     """bayesian_dropout(x, ratio=.5)

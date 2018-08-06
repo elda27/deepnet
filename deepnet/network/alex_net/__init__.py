@@ -6,7 +6,7 @@ import math
 import numpy as np
 from functools import reduce
 
-from deepnet.network.init import register_network
+from deepnet.core.registration  import register_network
 
 @register_network('network.alexnet')
 class AlexNet(chainer.Chain):

@@ -3,7 +3,7 @@ from deepnet.network import utils, conv_auto_encoder
 import chainer.functions as F
 import chainer.links as L
 
-from deepnet.network.init import register_network
+from deepnet.core.registration  import register_network
 
 @register_network(
     'network.tl-net.segnet',

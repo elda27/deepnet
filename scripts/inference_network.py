@@ -65,10 +65,10 @@ def main():
         network_config = deepnet.config.load(args.network_config, is_variable_expansion=False)
         network_config = update_log_dir(network_config, log_dirs) # Update log directory
         network_config = deepnet.config.expand_variable(network_config)
-    network_manager, visualizers = deepnet.network.init.build_networks(network_config)
+    network_manager, visualizers = deepnet.core.registration .build_networks(network_config)
 
-    for name, proc in deepnet.network.init._created_process.items():
-        if proc in deepnet.network.init._updatable_process:
+    for name, proc in deepnet.core.registration ._created_process.items():
+        if proc in deepnet.core.registration ._updatable_process:
             continue
         model_list = list(glob.glob(os.path.join(archive_dir, name + '_*.npz')))
         if len(model_list) == 0:

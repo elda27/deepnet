@@ -6,6 +6,9 @@ import warnings
 import imageio
 import numpy as np
 import abc
+from logging import getLogger
+
+logger = getLogger(__name__)
 
 class XpDataset(chainer.dataset.DatasetMixin):
     image_format = dict(
@@ -172,20 +175,17 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
                         current_paths = self.glob_case_dir(input_['paths'], '<case_names>', case_name)
                         case_names.extend([case_name] * len(current_paths))
                         paths.extend(current_paths)
+                    logger.debug('Using indices are folowing:<{}, {}>'.format(input_['label'], indices))
                 else:
                     assert GeneralDataset.used_indices < 1.0, 'Failed to split dataset because the dataset is fully used.'
                     for path in input_['paths']:
                         paths.extend(glob.glob(path))
 
                     start_ratio = GeneralDataset.used_indices
+                    end_ratio = start_ratio + indices if indices is not None else 1.0
 
-                    if indices is None or (start_ratio + indices) >= 1.0:
-                        indices = 1.0
-                        GeneralDataset.used_indices = 1.0
-                    else:
-                        GeneralDataset.used_indices += indices
-
-                    paths = paths[int(len(paths) * start_ratio) : int(len(paths) * GeneralDataset.used_indices)]
+                    paths = paths[int(len(paths) * start_ratio) : int(len(paths) * end_ratio)]
+                    logger.debug('Using indices are folowing:<{}, {}, {}>'.format(input_['label'], start_ratio, end_ratio))
 
                 assert len(paths), 'Founds dataset is empty. ' + str(input_['paths'])
 
@@ -197,7 +197,14 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
                 
                 if case_names is not None:
                     stage_input[labels]['case_name'] = case_names
-                
+            
+            if isinstance(indices, float) or indices is None:
+                if indices is None or (start_ratio + indices) >= 1.0:
+                    indices = 1.0
+                    GeneralDataset.used_indices = 1.0
+                else:
+                    GeneralDataset.used_indices += indices
+
             self.stage_inputs.append(stage_input)
 
     def get_example(self, index):
@@ -208,7 +215,10 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
                 paths = input_method['paths']
                 data = input_method['input'](paths[index % len(paths)])
                 if isinstance(label, tuple):
-                    stage_input.update(zip(label, data))
+                    if len(label) != 1:
+                        stage_input.update(zip(label, data))
+                    else:
+                        stage_input[label[0]] = data
                 else:
                     stage_input[label] = data
 
@@ -331,9 +341,12 @@ def load_image(filename):
         [img, img_header] = mhd.read(filename)
         spacing = img_header['ElementSpacing']
         
+        logger.debug('Loading image shape: ' + str(img.shape))
+
         return img, spacing
         
     elif ext in ('.png', '.jpg'):
         img = imageio.imread(filename)
+        logger.debug('Loading image shape: ' + str(img.shape))
         return np.transpose(img.astype(np.float32), (2, 1, 0))
     raise NotImplementedError('Not implemented extension: (File: {}, Ext: {})'.format(filename, ext))

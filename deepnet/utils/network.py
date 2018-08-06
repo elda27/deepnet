@@ -14,8 +14,11 @@ import itertools
 from copy import deepcopy
 import chainer
 import chainer.functions as F
-from deepnet.utils import config 
+from deepnet.core import config 
 from deepnet.utils import functions as utils
+from logging import getLogger, DEBUG
+
+logger = getLogger(__name__)
 
 def get_unique_label():
     sleep(1e-6)
@@ -337,7 +340,14 @@ class NetworkWalker:
         elif self.mode == InferenceMode.Test and not node.test: # If not running on test
             return
 
-        in_values = [ variables[var] for var in node.input ]
+        in_values = []
+        for var in node.input:
+            assert var in variables, 'Unknown variable: ' + var
+            value = variables[var]
+            if logger.isEnabledFor(DEBUG) and hasattr(value, 'shape'):
+                logger.debug('Arguments: {}, {}'.format(var, value.shape))
+            in_values.append(value)
+
         out = node(*in_values, **node.args)
         if not isinstance(out, (list, tuple)):
             out = [ out ]

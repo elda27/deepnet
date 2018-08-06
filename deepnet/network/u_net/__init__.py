@@ -7,7 +7,7 @@ import numpy as np
 import warnings
 from deepnet import utils
 from deepnet.network.utils import bayesian_dropout, get_upsampling_filter_2d, get_upsampling_filter_3d
-from deepnet.network.init import register_network
+from deepnet.core.registration import register_network
 
 class UNetBlock(chainer.Chain):
     

@@ -6,6 +6,7 @@ import numpy as np
 import tqdm
 import sys
 import copy
+from deepnet.core import config
 from deepnet import utils
 import os.path
 import subprocess
@@ -17,10 +18,10 @@ class Trainer:
         network, train_iter, valid_iter, 
         visualizers, train_config, optimizer, 
         logger, archive_dir, archive_nodes,
-        postprocessor
+        postprocessor, redirect,
         ):
         
-        utils.config.set_global_config('main_network', network)
+        config.set_global_config('main_network', network)
 
         self.network = network
         self.train_config = train_config
@@ -44,6 +45,9 @@ class Trainer:
         
         self.logger = logger
         self.dump_variables = []
+
+        self.redirect = redirect
+
         for l in self.logger:
             for var_name in l.dump_variables:
                 pos = var_name.find('.')
@@ -233,6 +237,10 @@ class Trainer:
         return input_vars
 
     def inference(self, stage_input, is_train=False):
+        for key, value in list(stage_input.items()):
+            if key not in self.redirect:
+                continue
+            stage_input[self.redirect[key]] = value
         self.network(mode='train' if is_train else 'valid', **stage_input)
 
     def write_network_architecture(self, graph_filename, loss):
