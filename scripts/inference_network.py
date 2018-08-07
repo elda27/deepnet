@@ -27,10 +27,15 @@ def main():
     parser = build_arguments()
     args = parser.parse_args()
 
-    if args.gpu >= 0:
-        cuda.get_device(args.gpu).use()
+    if len(args.gpu) > 1 or args.gpu[0] >= 0:
+        use_gpu = True
+        cuda.get_device(args.gpu[0]).use()
+
+    args.batch_size = sum(args.batch_size)
 
     assert args.step_index > 0
+    deepnet.utils.config.set_global_config('gpu_id', args.gpu)
+    deepnet.utils.config.set_global_config('batch_size', args.batch_size)
 
     dataset_config = deepnet.config.load(args.dataset_config)
     test_index = deepnet.utils.parse_index_file(args.test_index)
@@ -56,7 +61,7 @@ def main():
     if args.output_dir is None:
         args.output_dir = test_dir
 
-    # load network configuration
+    # load network configuration and construct network
     network_config = None
     if args.network_config is None:
         with open(os.path.join(log_dirs['param'], 'network_config.json')) as fp:
@@ -67,8 +72,12 @@ def main():
         network_config = deepnet.config.expand_variable(network_config)
     network_manager, visualizers = deepnet.network.init.build_networks(network_config)
 
+    # Initialize network
+    deepnet.network.init.initialize_networks(log_dir, args.step_index, network_config)
+
     for name, proc in deepnet.network.init._created_process.items():
-        if proc in deepnet.network.init._updatable_process:
+        if proc['proc'] not in deepnet.network.init._updatable_process:
+            proc['proc'].to_gpu()
             continue
         model_list = list(glob.glob(os.path.join(archive_dir, name + '_*.npz')))
         if len(model_list) == 0:
@@ -83,7 +92,8 @@ def main():
         pos = string.find(':')
         if pos == -1:
             raise ValueError('Bad format save image list: {}'.format(string))
-        save_image_list[string[:pos]] = string[pos + 1:]
+        key = tuple(string[:pos].split(','))
+        save_image_list[key] = string[pos + 1:]
 
     # Start inference.
     variables = {}
@@ -106,14 +116,19 @@ def main():
                 variables.update(network_manager.variables)
             
             # Save images
-            save_images(args.output_dir, variables, save_image_list, index_list)
-            
+            try:
+                save_images(args.output_dir, variables, save_image_list, index_list)
+            except KeyError:
+                for name in save_image_list:
+                    print('\n'.join([ str(node) for node in network_manager.validate_network(name) ]))
+                raise
 
 def save_images(output_dir, variables, save_image_list, index_list):
-    for image_name, output_filename in save_image_list.items():
+    for key, output_filename in save_image_list.items():
+        image_name = key[0]
         image = deepnet.utils.unwrapped(variables[image_name])
-        spacing = variables['spacing']
-        #if image.ndim == 4:
+        spacing = variables['spacing'] if len(key) == 1 else variables[key[1]]
+        
         for i in range(image.shape[0]):
             case_name = variables['case_name'][i]
             variables['__index__'] = index_list[case_name]
@@ -125,20 +140,19 @@ def save_images(output_dir, variables, save_image_list, index_list):
             # save images
             current_output_filename = os.path.join(current_output_dir, output_filename.format(**variables))
             save_image(current_output_filename, image[i], spacing[i])
-        #else:
-        #    current_output_dir = os.path.join(output_dir, variables['case_name'])
-        #    os.makedirs(current_output_dir, exist_ok=True)
-        #    save_image(output_filename.format(**variables), image[i], spacing)
-
+        
 def save_image(output_filename, image, spacing):
+    if image.shape[0] == 1:
+        image = image[0]
+
     if spacing is not None and len(spacing) < image.ndim:
         spacing = tuple(spacing) + (1,) * (image.ndim - len(spacing))
     deepnet.utils.visualizer.save_image(output_filename, image, spacing)
 
 def build_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--gpu', type=int, default=0, help='gpu id')
-    parser.add_argument('--batch-size', type=int, default=5, help='batch size')
+    parser.add_argument('--gpu', type=int, nargs="*", default=[0], help='gpu id')
+    parser.add_argument('--batch-size', type=int, nargs="*", default=[5], help='batch size')
 
     parser.add_argument('--dataset-config', type=str, required=True, help='A dataset configuraiton written by extended toml format.')
     parser.add_argument('--network-config', type=str, default=None)
