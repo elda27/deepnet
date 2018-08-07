@@ -44,6 +44,9 @@ def save_image(filename, image, spacing):
         imageio.imwrite(filename, image)
     elif ext in ('.mhd', '.mha'):
         mhd.write(filename, image, { 'ElementSpacing': spacing })
+    elif ext in ('.npy', '.npz'):
+        save_func = np.savez if ext[-1] == 'z' else np.save
+        save_func(filename, image)
 
 class Visualizer:
     def __init__(self, output_filename):
