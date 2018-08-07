@@ -138,7 +138,6 @@ input = ["gpu_reconstruct_volume", "gpu_volume"]
 process= "diff_image"
 output = "diff_volume"
 train = false
-test = false
 absolute = true
 
 # Visualize declaration
