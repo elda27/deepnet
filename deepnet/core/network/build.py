@@ -3,7 +3,7 @@ from deepnet import process
 from deepnet.utils import visualizer
 from deepnet.core.registration import register_argument_wrapper, generate_network, exist_process, get_registered_process
 from deepnet.core.config import get_global_config
-from deepnet.core import network
+from deepnet.core.network import network
 import hashlib
 from datetime import datetime
 from time import sleep

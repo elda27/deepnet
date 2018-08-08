@@ -1,6 +1,6 @@
 import auto_init
 import argparse
-from deepnet.core.network import NetworkNode
+from deepnet.core.network.network import NetworkNode
 import deepnet
 import toml
 import numpy as np
