@@ -2,8 +2,8 @@
 import pydrr.utils
 
 try:
-    from . import GpuVolomeProjector
-    VolumeProjector = GpuVolomeProjector
+    from .GpuVolumeProjector import GpuVolumeProjector
+    VolumeProjector = GpuVolumeProjector
 except ImportError:
     #VolumeProjector = CpuVolomeProjector
     raise
