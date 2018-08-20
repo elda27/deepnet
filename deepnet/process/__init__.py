@@ -31,8 +31,6 @@ _registered_process = {
 _ENABLE_PYCUDA_FUNCTION = False
 try:
     from deepnet.process.drr import VolumeProjector
-
-    _registered_process['HU2Myu'] = drr.pydrr.utils.HU2Myu
     _ENABLE_PYCUDA_FUNCTION = True
 except ImportError:
     pass
@@ -254,6 +252,34 @@ def reduce(*input, operation='+', weights=None):
     return y
 
 @register_process()
+def HU2Myu(HU_images, myu_water):
+    """
+    convert CT images represented in HU to linear attenuation coefficient
+        :param HU_images: images in HU
+        :param myu_water: linear attenuation coefficient of water at the effective
+                          energy in unit of 'mm2/g'. The effective energy
+                          is generally close to 30% or 40% of peak energy
+                          (see http://www.sprawls.org/ppmi2/RADPEN/)
+                          see http: // physics.nist.gov/PhysRefData/XrayMassCoef/ComTab/water.html
+                          for list of attenuation coefficient of water.
+                          (note that the unit of(myu/rho) listed here is
+                          cm2/g which is cm-1*(cm3/g), and we convert
+                          the unit for myu and rho into mm-1 and mm3/g
+                          respectively, so the value should be
+                          devided by 10)
+                          e.g.
+                            120kVP(peak energy) -> about 40keV(4e-2MeV)(effective energy)
+                            -> 0.2683cm2/g -> 0.02683mm2/g
+
+                          definition of Hounsfield Unit(air: -1000, water: 0)
+                            HU = 1000 * (myu - myu_water) / myu_water
+                            ->
+                            myu = HU * myu_water / 1000 + myu_water
+    """
+    myu_images = np.fmax((1000.0 + np.float32(HU_images)) * myu_water / 1000.0, 0.0)  # we clamp negative value
+    return myu_images
+
+@register_process()
 def volume_rendering(
     volume, spacing, case_name = None, 
     hu_volume=True, pose=[], **kwargs
@@ -263,11 +289,11 @@ def volume_rendering(
     if len(pose) == 0:
         pose.append([0, 0, 0, 0, 0, 0])
 
-    projector = GpuVolumeProjector.VolumeProjector(**kwargs)
+    projector = VolumeProjector(**kwargs)
 
     cpu_volume = utils.unwrapped(volume) # :TODO: Support cupy to pycuda translation.
     if hu_volume:
-        cpu_volume = GpuVolumeProjector.pydrr.utils.HU2Myu(cpu_volume, 0.02)
+        cpu_volume = HU2Myu(cpu_volume, 0.02)
 
     result = None
     if cpu_volume.ndim >= 4:
@@ -279,6 +305,7 @@ def volume_rendering(
     else:
         result = chainer.Variable(projector(cpu_volume, spacing, case_name, pose))
 
+    cuda.get_device(config.get_global_config('gpu_id')[0]).use()
     result.to_gpu()
     result.data.device.synchronize()
     return result
