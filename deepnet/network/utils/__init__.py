@@ -74,6 +74,9 @@ def crop(t, shape, n_dim = 2):
     '''
       Cropping t by x.shape
     '''
+    if t.shape == shape:
+        return t
+
     if n_dim == 2:
         left   = (t.shape[2] - shape[2]) // 2
         top    = (t.shape[3] - shape[3]) // 2
