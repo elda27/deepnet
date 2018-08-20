@@ -13,7 +13,7 @@ from deepnet.utils import config
 pycuda_device  = None
 pycuda_context = None
 
-class GpuVolomeProjector:
+class GpuVolumeProjector:
     def __init__(self,
         reverse_spacing = True,
         SOD = 1800,
@@ -86,7 +86,7 @@ class GpuVolomeProjector:
         image = d_image.get()
         pycuda_context.pop()
 
-        cupy_device.synchronize()
+        cupy_device.use()
 
         return image
 
@@ -97,4 +97,3 @@ class GpuVolomeProjector:
             self.pixel_spacing
             )
         self.projector = pydrr.Projector(self.detector, 1.0).to_gpu()
-        return image
