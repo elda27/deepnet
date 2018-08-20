@@ -1,0 +1,151 @@
+
+
+[config]
+input = [
+  "volume", "spacing"
+]
+
+logging = [
+  '__train_iteration__', 
+  'train.loss_reconstruct', 'valid.loss_reconstruct',
+  'train.loss_gradient', 'valid.loss_gradient',
+  'train.loss', 'valid.loss'
+]
+logging_weights = [
+  "", 
+  "${hyper_parameter.weight_reconstruct}", "${hyper_parameter.weight_reconstruct}", 
+  "${hyper_parameter.weight_gradient}", "${hyper_parameter.weight_gradient}", 
+  "", ""
+]
+
+archive_nodes = ['CAE']
+optimizing_loss = ['loss']
+
+[hyper_parameter]
+n_encode_dim = 512
+n_layers = 3
+gaussian_sigma = 20
+n_res_layers = 4
+
+weight_reconstruct = 1.0
+weight_gradient = -1e4
+#weight_lr = 1e4
+
+[[process]]
+label  = "CAE"
+type   = "network.cae"
+update = "loss"
+
+# Arguments
+n_dim = 2
+in_out_channel = 1
+encode_dim = "${hyper_parameter.n_encode_dim}"
+dropout = "dropout"
+use_batch_norm = true
+n_layers = "${hyper_parameter.n_layers}"
+latent_activation = true # For sparse penalty
+
+# Network declaration
+## Data augmentation
+[[network]]
+input=["volume"]
+process='random_transform'
+output=["volume_aug"]
+
+mode = "volume"
+rotation    = 10
+translation = 0
+zoom        = 0
+intensity   = 0
+
+[[network]]
+input  = ["volume", "spacing"]
+process = "volume_rendering"
+output = "DRR"
+pose = [
+  [0, 0, 0, 90, 0, 0],
+  #[0, 0, 0, 0, 90, 0],
+]
+SDD = 1000
+SOD = 900
+pixel_spacing = [0.4, 0.4]
+image_size = [92, 92]
+
+[[network]]
+input=["DRR"]
+process="to_gpu"
+output=["gpu_image"]
+
+## Apply gaussian noise
+[[network]]
+input = "gpu_image"
+process = "apply_gaussian_noise"
+output = "gpu_noisy_image"
+
+sigma = "${hyper_parameter.gaussian_sigma}"
+
+## Reconstruct label
+[[network]]
+input="gpu_noisy_image"
+label="CAE"
+process="CAE"
+output="gpu_reconstruct_image"
+
+[[network]]
+input=[ "gpu_image", "gpu_reconstruct_image" ]
+process="loss.euclidean_distance"
+output="loss_reconstruct"
+test=false
+
+[[network]]
+input = ["gpu_image", "gpu_reconstruct_image"]
+process = "loss.gradient_correlation"
+output = "loss_gradient"
+
+#[[network]]
+#input="gpu_reconstruct_volume"
+#process="get_latent_representation"
+#output="gpu_latent_representation"
+#source="CAE.encoder"
+#test=false
+
+#[[network]]
+#input="gpu_latent_representation"
+#process="loss.penalty_sparse_encoding"
+#output="loss_latent_representation"
+#rho = 0.05
+#test=false
+
+[[network]]
+input = ["loss_reconstruct", "loss_gradient"]
+process = "reduce"
+operation="+"
+output = "loss"
+weights = ["${hyper_parameter.weight_reconstruct}", "${hyper_parameter.weight_gradient}"]
+test=false
+
+[[network]]
+input = ["gpu_reconstruct_image", "gpu_image"]
+process= "diff_image"
+output = "diff_image"
+train = false
+test = false
+absolute = true
+
+# Visualize declaration
+[[visualize]]
+type  = "image_write"
+image_names = [ 
+  "volume",
+  ]
+output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__case_name__}_{__name__}_{__index__}.mhd'
+num_images = 3
+
+[[visualize]]
+type  = "image_write"
+image_names = [ 
+  "gpu_image"
+  ]
+spacing = [0.4, 0.4]
+output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__case_name__}_{__name__}_{__index__}.mhd'
+num_images = 3
