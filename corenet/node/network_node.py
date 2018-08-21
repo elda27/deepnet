@@ -17,7 +17,7 @@ class NetworkNode:
             if isinstance(a, (list, tuple)):
                 return all([ recusrsive_check_instance(e) for e in a ])
             else:
-                return isinstance(e, str)
+                return isinstance(a, str)
 
         assert recusrsive_check_instance(self.input),  'Input must be string: {}'.format(self.input)
         assert recusrsive_check_instance(self.output), 'Output must be string: {}'.format(self.output)
