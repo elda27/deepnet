@@ -88,7 +88,6 @@ def build_networks(config, step=None):
         if 'label' not in network_conf:
             network_conf['label'] = corenet.get_unique_label()
 
-        node_type = corenet.NetworkNode
         proc = None
         process_name = network_conf.pop('process')
         process_names = process_name.split('.')
@@ -105,9 +104,6 @@ def build_networks(config, step=None):
             if not updatable:
                 warnings.warn('A defined network is used on network stream but an not updatable network. {}'.format(process_names[0]))
             
-            if len(get_global_config('gpu_id')) > 1:
-                node_type = network.ParallelNetworkNode
-
         elif exist_process(process_name):
             proc = get_registered_process(process_name)
 
@@ -127,7 +123,7 @@ def build_networks(config, step=None):
                 training=network_conf.pop('train', True),
                 validation=network_conf.pop('valid', True),
                 test=network_conf.pop('test', True),
-                args=network_conf
+                args=network_conf, pointer=network_manager.pointer
                 )
             )
     

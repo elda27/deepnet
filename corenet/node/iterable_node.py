@@ -8,6 +8,7 @@ class IterableNode(NetworkNode):
         args, end_node, **kwargs
     ):
         super().__init__(name, model, input, output, args, **kwargs)
+        self.pointer = kwargs['pointer']
         self.distance = self.pointer.get_index(end_node) - self.pointer.get_index(name)
         self.pointer.add_callback(end_node, self.check)
         self.next_value = None
