@@ -6,3 +6,4 @@ from corenet.node.chainer_node import ChainerNode
 from corenet.node.iterable_node import IterableNode
 
 from corenet.manager.network_manager import NetworkManager
+from corenet.utils import get_unique_label
