@@ -1,6 +1,8 @@
 from deepnet.core.registration import register_process
 import chainer
 import chainer.functions as F
+import numpy as np
+import functools
 
 @register_process('loss.constrain_kernel')
 def constrain_kernel(network):
@@ -20,12 +22,13 @@ def constrain_kernel(network):
 @register_process('loss.gradient_correlation')
 def gradient_correlation(x, t, normalize = True, absolute = False):
     assert x.ndim == t.ndim
+    xp = chainer.cuda.get_array_module(x)
     n_grad_dim = x.ndim - 2
 
     gc = []
     for i in range(n_grad_dim):
         kernel_shape = tuple( np.roll( (3,) + (1, ) * (n_grad_dim - 1), shift=i))
-        w = cp.array([-1.0, 0.0, 1.0]).reshape((1, 1,) + kernel_shape)
+        w = xp.array([-1.0, 0.0, 1.0]).reshape((1, 1,) + kernel_shape)
         x_grad = F.convolution_nd(x, w)
         t_grad = F.convolution_nd(t, w)
 

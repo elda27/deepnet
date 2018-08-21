@@ -1,6 +1,6 @@
 from deepnet.core.registration import register_process
 from deepnet.core import config
-
+import chainer
 
 @register_process()
 def expand_dims(*input, axis=1):

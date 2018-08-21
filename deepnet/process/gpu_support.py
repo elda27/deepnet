@@ -8,6 +8,7 @@ except ImportError:
 
 import chainer
 from chainer import cuda, functions as F
+import numpy as np
 
 @register_process()
 def to_cpu(*input_list):

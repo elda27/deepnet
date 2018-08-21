@@ -1,5 +1,6 @@
 from deepnet.core.registration import register_process
 import chainer
+import chainer.functions as F
 from matplotlib.pyplot import get_cmap
 
 @register_process()
