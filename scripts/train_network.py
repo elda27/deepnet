@@ -196,7 +196,7 @@ def build_arguments():
     parser.add_argument('--log-index', type=int, default=None, help='Log direcotry index for training.')
     parser.add_argument('--step-index', type=int, default=1, help='step index')
 
-    parser.add_argument('--redirect', type=str, default=None, nargs='*', help='To redirect input variables.')
+    parser.add_argument('--redirect', type=str, default=[], nargs='*', help='To redirect input variables.')
 
     return parser
 
