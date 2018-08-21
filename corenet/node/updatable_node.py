@@ -3,12 +3,12 @@ from contextlib import contextmanager
 from abc import abstractmethod
 
 class UpdatableNode(NetworkNode):
-    def __init__(self, update, **kwargs):
-        self.udpate = update
+    def __init__(self, update = None, **kwargs):
+        self.udpate_variable = update
     
     def update(self, variable):
         yield self.update_before()
-        yield self.update_core(self.variable[self.update])
+        yield self.update_core(variable[self.update_variable])
         yield self.update_after()
 
     def update_before(self):

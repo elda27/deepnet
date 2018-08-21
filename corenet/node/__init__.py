@@ -6,17 +6,12 @@ from .updatable_node import UpdatableNode
 from .chainer_node   import ChainerNode
 from .iterable_node import IterableNode
 
-class NodeType(Enum):
-    Default   = 'default'
-    Updatable = 'updatable'
-    Chainer   = 'chainer'
-    Iterable  = 'iterable'
 
 _map_processor_type = {
-    NodeType.Default   : NetworkNode,
-    NodeType.Updatable : UpdatableNode,
-    NodeType.Chainer   : ChainerNode,
-    NodeType.Iterable  : IterableNode,
+    'default'   : NetworkNode,
+    'updatable' : UpdatableNode,
+    'chainer'   : ChainerNode,
+    'iterable'  : IterableNode,
 }
 _declared_processors = {}
 
@@ -31,7 +26,7 @@ def declare_node_type(node_type, **kwargs):
         assert node_type in _map_processor_type, 'Unknown node type:' + node_type
         _declared_processors[klass] = (_map_processor_type[node_type], kwargs)
         return klass
-    return declare_node_type
+    return _declare_node_type
 
 def make_node(model, **kwargs):
     """Generator function of network node.

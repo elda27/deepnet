@@ -12,6 +12,7 @@ import os.path
 import subprocess
 import gc
 from time import sleep
+import corenet
 
 class Trainer:
     def __init__(self, 
@@ -42,6 +43,8 @@ class Trainer:
         self.postprocessor = postprocessor
         
         self.optimizer = optimizer
+        for key, optimizer in self.optimizer.items():
+            corenet.ChainerNode.add_updater(key, optimizer)
         
         self.logger = logger
         self.dump_variables = []
@@ -72,31 +75,12 @@ class Trainer:
                     self.inference(stage_input, is_train=True)
                 sleep(1e-3)
                 
+                # Back propagation and update network 
+                self.network.update()
+
                 # Update variables.
                 variables.update(self.network.variables)
                 self.network.variables.clear()
-
-                # Back propagation and update network 
-                for loss_name, optimizer in self.optimizer.items():
-                    if loss_name not in variables:
-                        unreached = self.network.validate_network(loss_name)
-                        raise ValueError(
-                            'Unreached loss computation.\nFollowing list is not reached nodes: \n' + 
-                            '\n'.join([ str(n) for n in  unreached ])
-                            )
-
-                    loss = variables[loss_name]
-                    if i == 0:
-                        self.write_network_architecture(os.path.join(self.archive_dir, 'model_{}.dot'.format(loss_name)), loss)
-                    
-                    xp = cuda.get_array_module(loss)
-                    if xp.isnan(loss.data):
-                        raise ValueError('Loss is NaN: {}'.format(loss_name))
-
-
-                    self.network.update()
-                    loss.backward()
-                    optimizer.update()
 
                 # Update variables and unwrapping chainer variable
                 for var_name, value in variables.items():

@@ -8,6 +8,7 @@ import warnings
 from deepnet import utils
 from deepnet.network.utils import bayesian_dropout, get_upsampling_filter_2d, get_upsampling_filter_3d
 from deepnet.core.registration import register_network
+from corenet import declare_node_type
 
 class UNetBlock(chainer.Chain):
     
@@ -89,6 +90,7 @@ class UNetBlock(chainer.Chain):
             return h
 
 @register_network('network.U-net')
+@declare_node_type('chainer')
 class UNet(chainer.Chain):
     """ Builds a U-Net architecture. """
 

@@ -1,11 +1,13 @@
+from .param_holder import ParamHolder
 
 class NetworkNode:
     DeclareArguments = {}
 
     def __init__(
         self, name, model,
-        input, output,
-        args, **kwargs
+        input, output, args,
+        using_internal_param = [],
+        **kwargs
     ):
         input_ = input
         self.name  = name
@@ -25,6 +27,10 @@ class NetworkNode:
         self.model = model
         self.args = args
         self.attrs = kwargs
+
+        if issubclass(type(self.model), ParamHolder):
+            for u in using_internal_param:
+                ParamHolder.request_param(self.model, u)
     
     def __call__(self, *args):
         return self.model(*args, **self.args)
@@ -39,9 +45,13 @@ class NetworkNode:
             return get_field(getattr(var, fields[0]), fields[1:])
 
         proc = get_field(self.model, fields[:-1])
-        if not hasattr(proc, 'stores'):
-            raise NotImplementedError('get_internal_param method is not fully implementation')
-        return proc.stores[fields[-1]]
+
+        if issubclass(type(self.model), ParamHolder):
+            if not hasattr(proc, 'stores'):
+                raise NotImplementedError('get_internal_param method is not fully implementation')
+            return proc.stores[fields[-1]]
+        else:
+            return ParamHolder.get_param(proc, fields[-1])
 
     def get_attr(self, key):
         return self.attrs[key]

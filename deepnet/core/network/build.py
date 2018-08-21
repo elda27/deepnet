@@ -90,7 +90,6 @@ def build_networks(config, step=None):
 
         node_type = corenet.NetworkNode
         proc = None
-        updatable = False
         process_name = network_conf.pop('process')
         process_names = process_name.split('.')
         if process_names[0] in _created_process: # If process is exist.
@@ -111,7 +110,6 @@ def build_networks(config, step=None):
 
         elif exist_process(process_name):
             proc = get_registered_process(process_name)
-            updatable = False
 
         else:
             raise KeyError('Unknown process:{process} <input: {input}, output: {output}>'.format(
@@ -121,12 +119,11 @@ def build_networks(config, step=None):
                 ))
 
         network_manager.add_node( 
-            node_type(
-                network_conf.pop('label'),
-                proc, 
-                network_conf.pop('input'),
-                network_conf.pop('output'),
-                updatable=updatable,
+            corenet.make_node(
+                name = network_conf.pop('label'),
+                model = proc, 
+                input = network_conf.pop('input'),
+                output = network_conf.pop('output'),
                 training=network_conf.pop('train', True),
                 validation=network_conf.pop('valid', True),
                 test=network_conf.pop('test', True),

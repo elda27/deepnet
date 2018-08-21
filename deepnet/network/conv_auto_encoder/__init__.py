@@ -7,8 +7,10 @@ import numpy as np
 from functools import reduce
 
 from deepnet.core.registration import register_network
+from corenet import declare_node_type
 
 @register_network('network.cae.encoder')
+@declare_node_type('chainer')
 class Encoder(chainer.Chain):
     def __init__(self,
         n_dim, in_channel, 
@@ -67,6 +69,7 @@ class Encoder(chainer.Chain):
         return h
 
 @register_network('network.cae.decoder')
+@declare_node_type('chainer')
 class Decoder(chainer.Chain):
     def __init__(
         self, n_dim, out_channel, 

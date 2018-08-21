@@ -1,4 +1,4 @@
-from corenet.node import NodeType, declare_node_type, make_node
+from corenet.node import declare_node_type, make_node
 
 from corenet.node.network_node import NetworkNode
 from corenet.node.updatable_node import UpdatableNode

@@ -35,11 +35,19 @@ class NetworkManager:
         return list(reversed(unreached))
 
     def update(self):
-        updatables = [ 
-            node.update() for node in self.pointer.forward(0) 
-            if issubclass(type(node), UpdatableNode)
-        ]
-        for i in range(3):
+        updatables = []
+        for node in self.pointer.forward(0):
+            if not issubclass(type(node), UpdatableNode) or node.update_variables is None:
+                continue
+            if self.update_variables not in self.variables:
+                unreached = self.validate_network(self.update_variables)
+                raise ValueError(
+                    'Unreached loss computation.\nFollowing list is not reached nodes: \n' + 
+                    '\n'.join([ str(n) for n in  unreached ])
+                    )
+            updatables.append(node.update(self.variables)) 
+
+        for _ in range(3):
             for updatable in updatables:
                 next(updatable)
 
