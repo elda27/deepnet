@@ -13,5 +13,5 @@ class ChainerNode(UpdatableNode):
         ChainerNode.Updaters[self.update].update()
 
     @classmethod
-    def add_updater(name, updater):
-        Updaters[name] = updater
+    def add_updater(cls, name, updater):
+        cls.Updaters[name] = updater
