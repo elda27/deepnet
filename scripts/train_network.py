@@ -1,6 +1,6 @@
 import auto_init
 import argparse
-from deepnet.core.network.network import NetworkNode
+from corenet import NetworkNode, UpdatableNode
 import deepnet
 import toml
 import numpy as np
@@ -129,18 +129,16 @@ def main():
     ## Dump network architecture
     with open(os.path.join(param_dir, 'network_architectuire.json'), 'w+') as fp:
         json_dict = dict(
-            input_list = network_manager.input_list,
             network = { 
                     name: dict(
                         input= node.input,
                         output= node.output,
-                        updatable= node.updatable,
-                        training= node.training,
-                        validation= node.validation,
+                        updatable= node.updatable if issubclass(type(node), UpdatableNode) else None,
                         model= str(node.model),
+                        attr = node.attrs,
                         args= { name: str(node.args) for name, arg in node.args.items() }
                     )
-                     for name, node in network_manager.get_network_dict().items()
+                     for name, node in network_manager.network.items()
                 }
         )
         json.dump(json_dict, fp, indent=2)

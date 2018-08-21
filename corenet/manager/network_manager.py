@@ -2,20 +2,28 @@ from collections import OrderedDict
 from .process_pointer import ProcessPointer
 from corenet.node.updatable_node import UpdatableNode
 
+from logging import getLogger, DEBUG
+
+logger = getLogger(__name__)
+
 class NetworkManager:
     def __init__(self):
         self.process_list = OrderedDict()
         self.pointer = ProcessPointer(self.process_list)
         self.variables = {}
 
+    @property
+    def network(self):
+        return self.process_list
+
     def get_node(self, name):
         assert name in self.process_list
         return self.process_list[name]
 
     def add_node(self, node):
-        assert node.name not in self.network,\
+        assert node.name not in self.process_list,\
             'Duplicating label name: {}({})<{}>'.format(node.name, node, str({ key: str(node) for key, node in self.network.items() }))
-        self.network[node.name] = node
+        self.process_list[node.name] = node
 
     def build_network(self):
         self.pointer.sync()
@@ -29,7 +37,7 @@ class NetworkManager:
     def update(self):
         updatables = [ 
             node.update() for node in self.pointer.forward(0) 
-            if issubclass(node, UpdatableNode)
+            if issubclass(type(node), UpdatableNode)
         ]
         for i in range(3):
             for updatable in updatables:
@@ -38,19 +46,22 @@ class NetworkManager:
     def invoke(self, node):
         in_values = []
         for var in node.input:
-            assert var in variables, 'Unknown variable: ' + var
-            value = variables[var]
-            if logger.isEnabledFor(DEBUG) and hasattr(value, 'shape'):
-                logger.debug('Arguments: {}, {}'.format(var, value.shape))
+            assert var in self.variables, 'Unknown variable: ' + var
+            value = self.variables[var]
+            if logger.isEnabledFor(DEBUG):
+                if hasattr(value, 'shape'):
+                    logger.debug('Arguments: {}, {}'.format(var, value.shape))
+                else:
+                    logger.debug('Arguments: {}, {}'.format(var, value))
             in_values.append(value)
 
-        out = node(*in_values, **node.args)
+        out = node(*in_values)
         if not isinstance(out, (list, tuple)):
             out = [ out ]
 
         return out
 
-    def is_runtime(mode, node):
+    def is_runtime(self, mode, node):
         value = node.attrs.get(mode, True)
         return value if isinstance(value, bool) else False
 
@@ -61,15 +72,14 @@ class NetworkManager:
         self.variables.update(**output)
 
     def __call__(self, mode='train', **inputs):
-        assert len(self.network.nodes) > 0, "Network node is empty."
-        if len(self.network.edges) == 0:
-            self.build_network()
+        assert len(self.network) > 0, "Network node is empty."
+        self.build_network()
 
         self.variables = {}
         self.variables.update(inputs)
 
-        assert all((name in inputs for name in self.input_list)) or mode == 'test', \
-            'Input requirement is not satisfied. (Inputs: {}, Input requirement: {}])'.format(list(inputs.keys()), self.input_list)
+        #assert all((name in inputs for name in self.input_list)) or mode == 'test', \
+        #    'Input requirement is not satisfied. (Inputs: {}, Input requirement: {}])'.format(list(inputs.keys()), self.input_list)
 
         for node in self.pointer.forward(0):
             if not self.is_runtime(mode, node):

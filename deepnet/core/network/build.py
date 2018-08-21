@@ -3,7 +3,7 @@ from deepnet import process
 from deepnet.utils import visualizer
 from deepnet.core.registration import register_argument_wrapper, generate_network, exist_process, get_registered_process
 from deepnet.core.config import get_global_config
-from deepnet.core.network import network
+import corenet
 import hashlib
 from datetime import datetime
 from time import sleep
@@ -68,10 +68,10 @@ def build_networks(config, step=None):
         KeyError: If requirement keys are not available.
     
     Returns:
-        [network.NetworkManager, list[visualizer.Visualizer]]: Constructed NetworkManager and list of Visualizer objects.
+        [corenet.NetworkManager, list[visualizer.Visualizer]]: Constructed NetworkManager and list of Visualizer objects.
     """
     config = copy.deepcopy(config) # not to affect changes in the other function.
-    network_manager = network.NetworkManager(config['config']['input'])
+    network_manager = corenet.NetworkManager()
 
     # Geenerate process
     for process_config in config['process']:
@@ -86,9 +86,9 @@ def build_networks(config, step=None):
                 continue
 
         if 'label' not in network_conf:
-            network_conf['label'] = network.get_unique_label()
+            network_conf['label'] = corenet.get_unique_label()
 
-        node_type = network.NetworkNode
+        node_type = corenet.NetworkNode
         proc = None
         updatable = False
         process_name = network_conf.pop('process')
@@ -120,12 +120,12 @@ def build_networks(config, step=None):
                 output=network_conf['output'],
                 ))
 
-        network_manager.add( 
+        network_manager.add_node( 
             node_type(
                 network_conf.pop('label'),
+                proc, 
                 network_conf.pop('input'),
                 network_conf.pop('output'),
-                proc, 
                 updatable=updatable,
                 training=network_conf.pop('train', True),
                 validation=network_conf.pop('valid', True),

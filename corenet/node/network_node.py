@@ -27,7 +27,7 @@ class NetworkNode:
         self.attrs = kwargs
     
     def __call__(self, *args):
-        return self.model(*args, **self.attrs)
+        return self.model(*args, **self.args)
 
     def __repr__(self):
         return str(dict(input=self.input, output=self.output))
