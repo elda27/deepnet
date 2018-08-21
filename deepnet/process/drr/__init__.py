@@ -4,7 +4,7 @@ import numpy as np
 
 try:
     from . import GpuVolumeProjector
-    VolumeProjector = GpuVolomeProjector
+    VolumeProjector = GpuVolumeProjector
 except ModuleNotFoundError:
     pass
 except ImportError:
