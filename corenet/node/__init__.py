@@ -4,7 +4,7 @@ from functools import wraps
 from .network_node import NetworkNode
 from .updatable_node import UpdatableNode
 from .chainer_node   import ChainerNode
-from .interable_node import IterableNode
+from .iterable_node import IterableNode
 
 class NodeType(Enum):
     Default   = 'default'
