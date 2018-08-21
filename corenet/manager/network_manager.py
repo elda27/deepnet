@@ -60,7 +60,7 @@ class NetworkManager:
         output = { out: value for out, value in zip(node.output, values) }
         self.variables.update(**output)
 
-    def __call__(self, mode='train', **inputs)
+    def __call__(self, mode='train', **inputs):
         assert len(self.network.nodes) > 0, "Network node is empty."
         if len(self.network.edges) == 0:
             self.build_network()

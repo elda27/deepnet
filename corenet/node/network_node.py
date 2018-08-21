@@ -33,9 +33,14 @@ class NetworkNode:
         return str(dict(input=self.input, output=self.output))
 
     def get_internal_param(self, fields):
-        proc = utils.get_field(self.model, fields[:-1])
-        if not hasattr(proc, stores):
-            
+        def get_field(var, fileds):
+            if len(fields) == 0:
+                return var
+            return get_field(getattr(var, fields[0]), fields[1:])
+
+        proc = get_field(self.model, fields[:-1])
+        if not hasattr(proc, 'stores'):
+            raise NotImplementedError('get_internal_param method is not fully implementation')
         return proc.stores[fields[-1]]
 
     def get_attr(self, key):
