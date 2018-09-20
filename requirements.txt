@@ -8,5 +8,7 @@ opencv-python
 
 pandas
 
+plyfile
+
 #cupy
 chainer >= 4.0.0

@@ -77,10 +77,7 @@ def main():
     os.makedirs(param_dir, exist_ok=True)
 
     # Construct network
-    network_config = deepnet.config.load(args.network_config, is_variable_expansion=False)
-    network_config = update_log_dir(network_config, log_dirs) # Update log directory
-    network_config['hyper_parameter'].update(parse_hyper_parameter(args.hyper_param, network_config['hyper_parameter']))
-    network_config = deepnet.config.expand_variable(network_config)
+    network_config = load_network_config(args.network_config, args.hyper_param, log_dirs)
     network_manager, visualizers = deepnet.core.build_networks(network_config)
 
     # Initialize network
@@ -116,7 +113,7 @@ def main():
     # Freeze to update layer
     for layer_name in network_config['config'].get('freezing_layer', []):
         layers = layer_name.split('.')
-        model = deepnet.core.registration .get_process(layers[0])
+        model = deepnet.core.registration.get_process(layers[0])
         deepnet.utils.get_field(model, layers[1:]).disable_update()
 
     # Save variables
@@ -166,6 +163,7 @@ def main():
     trainer.train()
     print(log_dir)
 
+
 def build_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu', type=int, nargs="*", default=[0], help='gpu id')
@@ -198,6 +196,7 @@ def build_arguments():
 
     return parser
 
+
 def str2bool(string):
     string = string.lower()
     if string in ('on', 'true', 'yes'):
@@ -206,11 +205,12 @@ def str2bool(string):
         return False
     else:
         raise ValueError('Unknown flag value: {}'.format(string))
-    
+
+
 def parse_hyper_parameter(params, defined_params):
     if params is None:
         return defined_params
-        
+
     result_params = {}
     for param in params:
         pos = param.find(':')
@@ -225,6 +225,26 @@ def parse_hyper_parameter(params, defined_params):
         except:
             raise TypeError('Invalid value detected on the cast:{}, str->{}'.format(value, type_))
     return result_params
+
+
+def load_network_config(config_filename, hyper_param, log_dirs):
+    kwargs = dict(hyper_param=hyper_param, log_dirs=log_dirs)
+    network_config = deepnet.config.load(config_filename, is_variable_expansion=False)
+    network_config = expand_include(network_config, **kwargs)
+    network_config = update_log_dir(network_config, log_dirs) # Update log directory
+    network_config['hyper_parameter'].update(parse_hyper_parameter(hyper_param, network_config['hyper_parameter']))
+    network_config = deepnet.config.expand_variable(network_config)
+    return network_config
+
+
+def expand_include(config, **kwargs):
+    if 'include' not in config:
+        return config
+
+    include_config = load_network_config(config['include'], **kwargs)
+
+    return config.get('network_before', []) + include_config['network'] + config.get('network_after', [])
+
 
 def parse_redirect_string(strings):
     result = {}
