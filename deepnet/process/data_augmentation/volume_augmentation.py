@@ -96,7 +96,7 @@ class VolumeDataGenerator(object):
                  translation_range=0., # [%]
                  zoom_range=0.,        # [%]
                  intensity_range=0.,   # [intensity]
-                 fill_mode_x='reflect',
+                 fill_mode_x='constant',
                  fill_mode_y='constant',
                  horizontal_flip=False,
                  vertical_flip=False,
