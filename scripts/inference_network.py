@@ -129,6 +129,9 @@ def save_images(output_dir, variables, save_image_list, index_list):
         image = deepnet.utils.unwrapped(variables[image_name])
         spacing = variables['spacing'] if len(key) == 1 else variables[key[1]]
         
+        if isinstance(image, list):
+            image = np.asarray(image) 
+
         for i in range(image.shape[0]):
             case_name = variables['case_name'][i]
             variables['__index__'] = index_list[case_name]
