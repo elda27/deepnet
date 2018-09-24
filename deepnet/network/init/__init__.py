@@ -231,7 +231,8 @@ def initialize_prelearned_model(field, log_root_dir, step_index):
     archive_filename = found_models[-1]
     
     load_npz(archive_filename, created_model)
-    
+
+    created_model.enable_update()
 
 @register_initialize_field('share')
 def shared_layer(field, log_root_dir, step_index):
