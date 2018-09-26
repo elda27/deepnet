@@ -1,6 +1,7 @@
 from .network_node import NetworkNode
 from abc import abstractmethod
 
+
 class IterableNode(NetworkNode):
     def __init__(
         self, name, model,
@@ -8,8 +9,9 @@ class IterableNode(NetworkNode):
         args, end_node, **kwargs
     ):
         super().__init__(name, model, input, output, args, **kwargs)
-        self.pointer = kwargs['pointer']
-        self.distance = self.pointer.get_index(end_node) - self.pointer.get_index(name)
+        self.pointer = kwargs.pop('pointer')
+        self.distance = self.pointer.get_index(
+            end_node) - self.pointer.get_index(name)
         self.pointer.add_callback(end_node, self.check)
         self.next_value = None
 
@@ -20,7 +22,7 @@ class IterableNode(NetworkNode):
             self.iterator = iter(self.model(*args, **self.args))
             self.slice_values = []
             self.next_value = next(self.iterator)
-        
+
         value = self.next_value
         try:
             self.next_value = next(self.iterator)
@@ -39,4 +41,3 @@ class IterableNode(NetworkNode):
 
     def get_values(self):
         return self.slice_values
-
