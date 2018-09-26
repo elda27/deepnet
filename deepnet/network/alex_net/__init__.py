@@ -6,9 +6,11 @@ import math
 import numpy as np
 from functools import reduce
 
-from deepnet.network.init import register_network
+from corenet import declare_node_type
+from deepnet.core.registration  import register_network
 
 @register_network('network.alexnet')
+@declare_node_type('chainer')
 class AlexNet(chainer.Chain):
     def __init__(self,
         n_dim, in_channel, 

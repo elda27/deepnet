@@ -6,85 +6,10 @@ import warnings
 import imageio
 import numpy as np
 import abc
+from plyfile import PlyData
+from logging import getLogger
 
-class XpDataset(chainer.dataset.DatasetMixin):
-    image_format = dict(
-        default='*_image.mhd',
-        lcn='*_image_lcn.mhd',
-        gcn='*_image_gcn.mhd',
-    )
-    label_format = '*_label.mhd'
-
-    def __init__(self, patient_root, case_names, image_type='default', image=True, label=True):
-        assert image or label, 'Unused whole images.'
-        cls = XpDataset
-        if image_type not in cls.image_format:
-            warnings.warn('Unknown format: {}\n will use default image'.format(image_type))
-            image_type = 'default'
-
-        self.case_names = case_names
-        self.use_image = image
-        self.use_label = label
-        self.image_paths = []
-        self.label_paths = []
-        self.case_names = []
-        for case_name in case_names: # Set case names
-            image_glob = os.path.join(patient_root, case_name, cls.image_format[image_type])
-            self.image_paths.extend(glob.glob(image_glob))
-            label_glob = os.path.join(patient_root, case_name, cls.label_format)
-            self.label_paths.extend(glob.glob(label_glob))
-            self.case_names.extend([ case_name for i in range(max(len(self.image_paths), len(self.label_paths)) - len(self.case_names)) ])
-        assert not self.use_image or len(self.image_paths) != 0, 'This dataset is empty image. (root_path:{})'.format(patient_root)
-        assert not self.use_label or len(self.label_paths) != 0, 'This dataset is empty label. (root_path:{})'.format(patient_root)
-        assert (not (image and label)) or len(self.image_paths) == len(self.label_paths), \
-            "Unmatched to count of image and label file. (image:{}, label:{})".format(len(self.image_paths), len(self.label_paths))
-
-    def __len__(self):
-        return len(self.image_paths) if len(self.image_paths) != 0 else len(self.label_paths)
-
-    def get_example(self, index):
-        result = dict()
-        if self.use_label: # Load label
-            label, header = mhd.read(self.label_paths[index])
-            spacing = header['ElementSpacing']
-            result['label'] = label
-            result['spacing'] = spacing
-
-        if self.use_image: # Load image
-            image, header = mhd.read(self.image_paths[index])
-            if image.ndim < 3:
-                image = np.expand_dims(image, axis=0)
-            spacing = header['ElementSpacing']
-            result['image'] = image
-            result['spacing'] = spacing
-        
-        result['case_name'] = self.case_names[index]
-
-        return [ result ]
-
-class InstantDataset(chainer.dataset.DatasetMixin):
-    def __init__(self, image_root, use_ratio, use_backward=False):
-        self.illust_images =  list(glob.glob(os.path.join(image_root, 'illust-db', '*.jpg')))
-        if use_backward:
-            self.illust_images = self.illust_images[int((1 - use_ratio) * len(self.illust_images)):]
-        else:
-            self.illust_images = self.illust_images[:int(use_ratio * len(self.illust_images))]
-
-    def __len__(self):
-        return len(self.illust_images)
-        #return max((len(self.image_paths), len(self.illust_images)))
-
-    def get_example(self, index):
-        illust = imageio.imread(self.illust_images[index]).astype(np.float32)
-        if illust is None or illust.ndim == 1 or illust.ndim == 0:
-            illust = imageio.imread(self.illust_images[index - 1]).astype(np.float32)
-        if illust.ndim == 2:
-            illust = np.expand_dims(illust, axis=2)
-        illust = np.transpose(illust, (2, 1, 0)).astype(np.float32)
-        result = dict(
-            label=illust,
-        )
-        return [ result ]
+logger = getLogger(__name__)
 
 class RangeArray:
     def __init__(self):
@@ -172,20 +97,17 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
                         current_paths = self.glob_case_dir(input_['paths'], '<case_names>', case_name)
                         case_names.extend([case_name] * len(current_paths))
                         paths.extend(current_paths)
+                    logger.debug('Using indices are folowing:<{}, {}>'.format(input_['label'], indices))
                 else:
                     assert GeneralDataset.used_indices < 1.0, 'Failed to split dataset because the dataset is fully used.'
                     for path in input_['paths']:
                         paths.extend(glob.glob(path))
 
                     start_ratio = GeneralDataset.used_indices
+                    end_ratio = start_ratio + indices if indices is not None else 1.0
 
-                    if indices is None or (start_ratio + indices) >= 1.0:
-                        indices = 1.0
-                        GeneralDataset.used_indices = 1.0
-                    else:
-                        GeneralDataset.used_indices += indices
-
-                    paths = paths[int(len(paths) * start_ratio) : int(len(paths) * GeneralDataset.used_indices)]
+                    paths = paths[int(len(paths) * start_ratio) : int(len(paths) * end_ratio)]
+                    logger.debug('Using indices are folowing:<{}, {}, {}>'.format(input_['label'], start_ratio, end_ratio))
 
                 assert len(paths), 'Founds dataset is empty. ' + str(input_['paths'])
 
@@ -197,7 +119,14 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
                 
                 if case_names is not None:
                     stage_input[labels]['case_name'] = case_names
-                
+            
+            if isinstance(indices, float) or indices is None:
+                if indices is None or (start_ratio + indices) >= 1.0:
+                    indices = 1.0
+                    GeneralDataset.used_indices = 1.0
+                else:
+                    GeneralDataset.used_indices += indices
+
             self.stage_inputs.append(stage_input)
 
     def get_example(self, index):
@@ -208,7 +137,10 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
                 paths = input_method['paths']
                 data = input_method['input'](paths[index % len(paths)])
                 if isinstance(label, tuple):
-                    stage_input.update(zip(label, data))
+                    if len(label) != 1:
+                        stage_input.update(zip(label, data))
+                    else:
+                        stage_input[label[0]] = data
                 else:
                     stage_input[label] = data
 
@@ -331,9 +263,25 @@ def load_image(filename):
         [img, img_header] = mhd.read(filename)
         spacing = img_header['ElementSpacing']
         
+        logger.debug('Loading image shape: ' + str(img.shape))
+
         return img, spacing
         
     elif ext in ('.png', '.jpg'):
         img = imageio.imread(filename)
+        logger.debug('Loading image shape: ' + str(img.shape))
         return np.transpose(img.astype(np.float32), (2, 1, 0))
+    raise NotImplementedError('Not implemented extension: (File: {}, Ext: {})'.format(filename, ext))
+
+
+@register_input_method('surface')
+def load_surface(filename):
+    _, ext = os.path.splitext( os.path.basename(filename) )
+
+    if ext in ('.ply'):
+        data = PlyData.read(filename)
+        return data['vertex']
+    elif ext in ('.npy'):
+        data = np.load(filename)
+        return data
     raise NotImplementedError('Not implemented extension: (File: {}, Ext: {})'.format(filename, ext))

@@ -8,7 +8,7 @@ import chainer.cuda
 import pycuda.driver
 
 import deepnet.utils
-from deepnet.utils import config
+from deepnet.core import config
 
 pycuda_device  = None
 pycuda_context = None

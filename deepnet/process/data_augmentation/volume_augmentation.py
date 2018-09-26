@@ -12,7 +12,7 @@ def flip_axis(x, axis):
 
 
 def transform_matrix_offset_center(matrix, x, y, z):
-    xp = chainer.cuda.get_array_module(x)
+    xp = chainer.cuda.get_array_module(matrix)
     o_x = float(x) / 2 + 0.5
     o_y = float(y) / 2 + 0.5
     o_z = float(z) / 2 + 0.5
@@ -144,6 +144,7 @@ class VolumeDataGenerator(object):
                              'a tuple or list of two floats. '
                              'Received arg: ', zoom_range)
 
+<<<<<<< HEAD
     def reset_center(self, x):
         input_shape = x.shape
         img_row_axis = self.row_axis - 1
@@ -156,6 +157,8 @@ class VolumeDataGenerator(object):
         self.transform_matrix = transform_matrix_offset_center(
             self.transform_matrix_origin.copy(), h, w, z)
 
+=======
+>>>>>>> new-network-stream
     def random_transform(self, x):
         """Randomly augment a single image tensor.
         # Arguments
@@ -242,7 +245,10 @@ class VolumeDataGenerator(object):
             self.transform_matrix = zoom_matrix if self.transform_matrix is None else xp.dot(
                 self.transform_matrix, zoom_matrix)
 
+<<<<<<< HEAD
         self.transform_matrix_origin = self.transform_matrix.copy()
+=======
+>>>>>>> new-network-stream
         if self.transform_matrix is not None:
             self.transform_matrix = transform_matrix_offset_center(
                 self.transform_matrix, h, w, z)

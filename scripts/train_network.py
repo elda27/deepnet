@@ -1,6 +1,6 @@
 import auto_init
 import argparse
-from deepnet.utils.network import NetworkNode
+from corenet import NetworkNode, UpdatableNode
 import deepnet
 import toml
 import numpy as np
@@ -20,11 +20,15 @@ from functools import reduce
 from itertools import cycle
 import json
 import log_util
-
+from logging import getLogger
 
 def main():
+    logger = getLogger(__name__)
+
     parser = build_arguments()
     args = parser.parse_args()
+
+    logger.debug(vars(args))
 
     use_gpu = False
     if len(args.gpu) > 1 or args.gpu[0] >= 0:
@@ -34,8 +38,8 @@ def main():
     assert len(args.batch_size) == len(args.gpu)
     assert args.step_index > 0
 
-    deepnet.utils.config.set_global_config('gpu_id', args.gpu)
-    deepnet.utils.config.set_global_config('batch_size', args.batch_size)
+    deepnet.core.config.set_global_config('gpu_id', args.gpu)
+    deepnet.core.config.set_global_config('batch_size', args.batch_size)
 
     # Load configs
     dataset_config = deepnet.config.load(args.dataset_config)
@@ -73,14 +77,13 @@ def main():
     os.makedirs(param_dir, exist_ok=True)
 
     # Construct network
-    network_config = deepnet.config.load(args.network_config, is_variable_expansion=False)
-    network_config = update_log_dir(network_config, log_dirs) # Update log directory
-    network_config['hyper_parameter'].update(parse_hyper_parameter(args.hyper_param, network_config['hyper_parameter']))
-    network_config = deepnet.config.expand_variable(network_config)
-    network_manager, visualizers = deepnet.network.init.build_networks(network_config)
+    network_config = load_network_config(args.network_config, args.hyper_param, log_dirs)
+    network_manager, visualizers = deepnet.core.build_networks(network_config)
 
     # Initialize network
-    deepnet.network.init.initialize_networks(log_dir, args.step_index, network_config)
+
+    for init_field in network_config.get('initialize', []):
+        deepnet.core.initialize_networks(**init_field)
 
     # Setup post processor
     postprocessor = deepnet.utils.postprocess.PostProcessManager(network_config.get('postprocess', []))
@@ -99,7 +102,7 @@ def main():
     # Setup optimizer
     optimizers = []
     optimizer = chainer.optimizers.Adam(args.lr_rate)
-    for model in deepnet.network.init._updatable_process:
+    for model in deepnet.core.get_updatable_process_list():
         if not issubclass(type(model), chainer.Chain):
             continue
         if use_gpu:
@@ -110,7 +113,7 @@ def main():
     # Freeze to update layer
     for layer_name in network_config['config'].get('freezing_layer', []):
         layers = layer_name.split('.')
-        model = deepnet.network.init.get_process(layers[0])
+        model = deepnet.core.registration.get_process(layers[0])
         deepnet.utils.get_field(model, layers[1:]).disable_update()
 
     # Save variables
@@ -123,18 +126,16 @@ def main():
     ## Dump network architecture
     with open(os.path.join(param_dir, 'network_architectuire.json'), 'w+') as fp:
         json_dict = dict(
-            input_list = network_manager.input_list,
             network = { 
                     name: dict(
                         input= node.input,
                         output= node.output,
-                        updatable= node.updatable,
-                        training= node.training,
-                        validation= node.validation,
+                        updatable= node.updatable if issubclass(type(node), UpdatableNode) else None,
                         model= str(node.model),
+                        attr = { key: str(value) for key, value in node.attrs.items()},
                         args= { name: str(node.args) for name, arg in node.args.items() }
                     )
-                     for name, node in network_manager.get_network_dict().items()
+                     for name, node in network_manager.network.items()
                 }
         )
         json.dump(json_dict, fp, indent=2)
@@ -155,11 +156,13 @@ def main():
         archive_dir=archive_dir,
         archive_nodes=archive_nodes,
         train_config=train_config,
-        postprocessor=postprocessor
+        postprocessor=postprocessor,
+        redirect=parse_redirect_string(args.redirect)
     )
 
     trainer.train()
     print(log_dir)
+
 
 def build_arguments():
     parser = argparse.ArgumentParser()
@@ -189,7 +192,10 @@ def build_arguments():
     parser.add_argument('--log-index', type=int, default=None, help='Log direcotry index for training.')
     parser.add_argument('--step-index', type=int, default=1, help='step index')
 
+    parser.add_argument('--redirect', type=str, default=[], nargs='*', help='To redirect input variables.')
+
     return parser
+
 
 def str2bool(string):
     string = string.lower()
@@ -199,11 +205,12 @@ def str2bool(string):
         return False
     else:
         raise ValueError('Unknown flag value: {}'.format(string))
-    
+
+
 def parse_hyper_parameter(params, defined_params):
     if params is None:
         return defined_params
-        
+
     result_params = {}
     for param in params:
         pos = param.find(':')
@@ -218,6 +225,33 @@ def parse_hyper_parameter(params, defined_params):
         except:
             raise TypeError('Invalid value detected on the cast:{}, str->{}'.format(value, type_))
     return result_params
+
+
+def load_network_config(config_filename, hyper_param, log_dirs):
+    kwargs = dict(hyper_param=hyper_param, log_dirs=log_dirs)
+    network_config = deepnet.config.load(config_filename, is_variable_expansion=False)
+    network_config = expand_include(network_config, **kwargs)
+    network_config = update_log_dir(network_config, log_dirs) # Update log directory
+    network_config['hyper_parameter'].update(parse_hyper_parameter(hyper_param, network_config['hyper_parameter']))
+    network_config = deepnet.config.expand_variable(network_config)
+    return network_config
+
+
+def expand_include(config, **kwargs):
+    if 'include' not in config:
+        return config
+
+    include_config = load_network_config(config['include'], **kwargs)
+
+    return config.get('network_before', []) + include_config['network'] + config.get('network_after', [])
+
+
+def parse_redirect_string(strings):
+    result = {}
+    for string in strings:
+        src, dst = string.split(':')
+        result[src] = dst
+    return result
 
 def update_log_dir(network_config, log_dir):
     network_config['log_dir'] = log_dir['root']

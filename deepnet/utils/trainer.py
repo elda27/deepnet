@@ -6,21 +6,23 @@ import numpy as np
 import tqdm
 import sys
 import copy
+from deepnet.core import config
 from deepnet import utils
 import os.path
 import subprocess
 import gc
 from time import sleep
+import corenet
 
 class Trainer:
     def __init__(self, 
         network, train_iter, valid_iter, 
         visualizers, train_config, optimizer, 
         logger, archive_dir, archive_nodes,
-        postprocessor
+        postprocessor, redirect,
         ):
         
-        utils.config.set_global_config('main_network', network)
+        config.set_global_config('main_network', network)
 
         self.network = network
         self.train_config = train_config
@@ -41,9 +43,14 @@ class Trainer:
         self.postprocessor = postprocessor
         
         self.optimizer = optimizer
+        for key, optimizer in self.optimizer.items():
+            corenet.ChainerNode.add_updater(key, optimizer)
         
         self.logger = logger
         self.dump_variables = []
+
+        self.redirect = redirect
+
         for l in self.logger:
             for var_name in l.dump_variables:
                 pos = var_name.find('.')
@@ -68,31 +75,12 @@ class Trainer:
                     self.inference(stage_input, is_train=True)
                 sleep(1e-3)
                 
+                # Back propagation and update network 
+                self.network.update()
+
                 # Update variables.
                 variables.update(self.network.variables)
                 self.network.variables.clear()
-
-                # Back propagation and update network 
-                for loss_name, optimizer in self.optimizer.items():
-                    if loss_name not in variables:
-                        unreached = self.network.validate_network(loss_name)
-                        raise ValueError(
-                            'Unreached loss computation.\nFollowing list is not reached nodes: \n' + 
-                            '\n'.join([ str(n) for n in  unreached ])
-                            )
-
-                    loss = variables[loss_name]
-                    if i == 0:
-                        self.write_network_architecture(os.path.join(self.archive_dir, 'model_{}.dot'.format(loss_name)), loss)
-                    
-                    xp = cuda.get_array_module(loss)
-                    if xp.isnan(loss.data):
-                        raise ValueError('Loss is NaN: {}'.format(loss_name))
-
-
-                    self.network.update()
-                    loss.backward()
-                    optimizer.update()
 
                 # Update variables and unwrapping chainer variable
                 for var_name, value in variables.items():
@@ -233,6 +221,10 @@ class Trainer:
         return input_vars
 
     def inference(self, stage_input, is_train=False):
+        for key, value in list(stage_input.items()):
+            if key not in self.redirect:
+                continue
+            stage_input[self.redirect[key]] = value
         self.network(mode='train' if is_train else 'valid', **stage_input)
 
     def write_network_architecture(self, graph_filename, loss):

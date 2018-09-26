@@ -3,12 +3,14 @@ from deepnet.network import utils, conv_auto_encoder
 import chainer.functions as F
 import chainer.links as L
 
-from deepnet.network.init import register_network
+from deepnet.core.registration  import register_network
+from corenet import declare_node_type
 
 @register_network(
     'network.tl-net.segnet',
     wrap_args={ 'decoder':'network' }
     )
+@declare_node_type('chainer')
 class Segnet(chainer.Chain):
     def __init__(self,
         n_dim,

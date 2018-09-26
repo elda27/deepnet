@@ -9,6 +9,7 @@ debug/
 log/
 tmp/
 *.nc
+*.pyc
 *.png
 *.mhd
 *.raw

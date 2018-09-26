@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import chainer
 import chainer.functions as F
 from chainer import cuda
@@ -461,3 +462,15 @@ def get_latent_representation(*_, source):
 def penalty_sparse_encoding(vector, rho=0.05):
     h = F.mean(vector, axis=0)
     return F.sum(rho * F.log(rho / h) + (1 - rho) * F.log((1 - rho) / (1 - h)))
+=======
+from . import arithmetric
+from . import chainer_wrapper
+from . import distribution
+from . import gpu_support
+
+from . import uitls
+from .loss import distance, entropy, intensity, latent
+from .image_pocessing import intensity, label
+from . import drr
+from . import data_augmentation
+>>>>>>> new-network-stream
