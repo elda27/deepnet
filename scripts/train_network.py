@@ -132,7 +132,7 @@ def main():
                         output= node.output,
                         updatable= node.updatable if issubclass(type(node), UpdatableNode) else None,
                         model= str(node.model),
-                        attr = node.attrs,
+                        attr = { key: str(value) for key, value in node.attrs.items()},
                         args= { name: str(node.args) for name, arg in node.args.items() }
                     )
                      for name, node in network_manager.network.items()
