@@ -72,17 +72,8 @@ def main():
         network_config = deepnet.config.expand_variable(network_config)
     network_manager, visualizers = deepnet.core.registration .build_networks(network_config)
 
-<<<<<<< HEAD
-    # Initialize network
-    deepnet.network.init.initialize_networks(log_dir, args.step_index, network_config)
-
-    for name, proc in deepnet.network.init._created_process.items():
-        if proc['proc'] not in deepnet.network.init._updatable_process:
-            proc['proc'].to_gpu()
-=======
     for name, proc in deepnet.core.registration ._created_process.items():
         if proc in deepnet.core.registration ._updatable_process:
->>>>>>> new-network-stream
             continue
         model_list = list(glob.glob(os.path.join(archive_dir, name + '_*.npz')))
         if len(model_list) == 0:

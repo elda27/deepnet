@@ -3,15 +3,8 @@ from deepnet.core.registration import register_process, add_process
 import numpy as np
 
 try:
-<<<<<<< HEAD
     from .GpuVolumeProjector import GpuVolumeProjector
     VolumeProjector = GpuVolumeProjector
-=======
-    from . import GpuVolumeProjector
-    VolumeProjector = GpuVolumeProjector
-except ModuleNotFoundError:
-    pass
->>>>>>> new-network-stream
 except ImportError:
     #VolumeProjector = CpuVolomeProjector
     raise
@@ -19,14 +12,16 @@ except ImportError:
 
 @register_process()
 def HU2Myu(HU_images):
-    myu_images = np.fmax((1000.0 + np.float32(HU_images)) * myu_water / 1000.0, 0.0)
+    myu_images = np.fmax((1000.0 + np.float32(HU_images))
+                         * myu_water / 1000.0, 0.0)
     return myu_images
+
 
 @register_process()
 def volume_rendering(
-    volume, spacing, case_name = None, 
+    volume, spacing, case_name=None,
     hu_volume=True, pose=[], **kwargs
-    ):
+):
     assert _ENABLE_PYCUDA_FUNCTION
 
     if len(pose) == 0:
@@ -34,7 +29,8 @@ def volume_rendering(
 
     projector = GpuVolumeProjector.VolumeProjector(**kwargs)
 
-    cpu_volume = utils.unwrapped(volume) # :TODO: Support cupy to pycuda translation.
+    # :TODO: Support cupy to pycuda translation.
+    cpu_volume = utils.unwrapped(volume)
     if hu_volume:
         cpu_volume = HU2Myu(cpu_volume, 0.02)
 
@@ -43,10 +39,12 @@ def volume_rendering(
         images = []
         for i in range(len(cpu_volume)):
             i_volume = cpu_volume[i]
-            images.append(projector(i_volume, spacing[i], case_name[i] if case_name is not None else None, pose))
+            images.append(projector(
+                i_volume, spacing[i], case_name[i] if case_name is not None else None, pose))
         result = chainer.Variable(np.transpose(np.array(images), (0, 3, 2, 1)))
     else:
-        result = chainer.Variable(projector(cpu_volume, spacing, case_name, pose))
+        result = chainer.Variable(
+            projector(cpu_volume, spacing, case_name, pose))
 
     result.to_gpu()
     result.data.device.synchronize()

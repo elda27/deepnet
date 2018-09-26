@@ -144,7 +144,6 @@ class VolumeDataGenerator(object):
                              'a tuple or list of two floats. '
                              'Received arg: ', zoom_range)
 
-<<<<<<< HEAD
     def reset_center(self, x):
         input_shape = x.shape
         img_row_axis = self.row_axis - 1
@@ -157,8 +156,6 @@ class VolumeDataGenerator(object):
         self.transform_matrix = transform_matrix_offset_center(
             self.transform_matrix_origin.copy(), h, w, z)
 
-=======
->>>>>>> new-network-stream
     def random_transform(self, x):
         """Randomly augment a single image tensor.
         # Arguments
