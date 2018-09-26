@@ -2,6 +2,9 @@ from deepnet.core.registration import register_process
 import chainer
 import chainer.functions as F
 from matplotlib.pyplot import get_cmap
+import numpy as np
+from deepnet import utils
+
 
 @register_process()
 def binary(*images, threshold=None):
@@ -9,12 +12,15 @@ def binary(*images, threshold=None):
 
     bin_images = []
     for image in images:
-        assert not isinstance(image, chainer.Variable), 'Unsupported chainer.Variable.'
+        assert not isinstance(
+            image, chainer.Variable), 'Unsupported chainer.Variable.'
         if isinstance(image, list):
-            bin_images.append([(img > threshold).astype(np.int32) for img in image ])
+            bin_images.append([(img > threshold).astype(np.int32)
+                               for img in image])
         else:
             bin_images.append(image > threshold)
     return bin_images
+
 
 @register_process()
 def normalize(*images):
@@ -25,6 +31,7 @@ def normalize(*images):
         amin = np.amin(img)
         results.append((img - amax) / (amax - amin + 1e-8))
     return results[0] if len(results) == 1 else results
+
 
 @register_process()
 def blend_image(*image_pairs):
@@ -39,6 +46,7 @@ def blend_image(*image_pairs):
         result_image.append(normalize(fore) * 0.5 + normalize(back) * 0.5)
     return result_image
 
+
 @register_process()
 def diff_image(*input, absolute=False):
     output = []
@@ -46,9 +54,8 @@ def diff_image(*input, absolute=False):
     if absolute:
         abs_method = F.absolute
     else:
-        abs_method = lambda x: x
+        def abs_method(x): return x
 
     for i, j in zip(input[::2], input[1::2]):
         output.append(abs_method(i - j))
     return output
-
