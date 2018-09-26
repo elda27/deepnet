@@ -5,10 +5,10 @@ class ProcessPointer:
         self.names = []
         self.callbacks = {}
         self.position = 0
-    
+
     def sync(self):
         self.names = list(self.process_list.keys())
-    
+
     def get_node(self):
         return self.process_list[self.names[self.position]]
 
@@ -17,7 +17,7 @@ class ProcessPointer:
 
     def move(self, index):
         self.position += index
-        assert  0 <= self.position < len(self.process_list)
+        assert 0 <= self.position < len(self.process_list)
 
         removing_callback = None
         if self.position in self.callbacks:
@@ -28,8 +28,8 @@ class ProcessPointer:
 
         if removing_callback is not None:
             callbacks = self.callbacks[self.position]
-            del self.callbacks[self.position][callbacks.index(removing_callback)]
-
+            del self.callbacks[self.position][callbacks.index(
+                removing_callback)]
 
     def add_callback(self, index, callback):
         """Add callback function when to move index.
@@ -44,7 +44,7 @@ class ProcessPointer:
             index = self.names.index(index)
         self.callbacks.setdefault(index, []).append(callback)
 
-    def forward(self, start = None):
+    def forward(self, start=None):
         if start is not None:
             self.position = start
 
@@ -52,7 +52,7 @@ class ProcessPointer:
             yield self.get_node()
             self.position = self.position + 1
 
-    def backward(self, start = None):
+    def backward(self, start=None):
         if start is not None:
             self.position = start
 
@@ -65,3 +65,7 @@ class ProcessPointer:
 
     def __isub__(self, index):
         self.move(-index)
+
+    def __str__(self):
+        self.sync()
+        return f'Pos:{self.position}, Cursor:{self.names[self.position]}'
