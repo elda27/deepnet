@@ -1,17 +1,17 @@
 from deepnet.core.registration import register_process, add_process
-#from . import CpuVolomeProjector
+from .CpuVolumeProjector import CpuVolumeProjector
 import numpy as np
 
 try:
     from .GpuVolumeProjector import GpuVolumeProjector
     VolumeProjector = GpuVolumeProjector
 except ImportError:
-    #VolumeProjector = CpuVolomeProjector
-    raise
+    VolumeProjector = CpuVolumeProjector
+    pass
 
 
 @register_process()
-def HU2Myu(HU_images):
+def HU2Myu(HU_images, myu_water):
     myu_images = np.fmax((1000.0 + np.float32(HU_images))
                          * myu_water / 1000.0, 0.0)
     return myu_images
@@ -27,7 +27,7 @@ def volume_rendering(
     if len(pose) == 0:
         pose.append([0, 0, 0, 0, 0, 0])
 
-    projector = GpuVolumeProjector.VolumeProjector(**kwargs)
+    projector = VolumeProjector(**kwargs)
 
     # :TODO: Support cupy to pycuda translation.
     cpu_volume = utils.unwrapped(volume)
