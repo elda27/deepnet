@@ -231,7 +231,15 @@ def parse_hyper_parameter(params, defined_params):
 
         type_ = type(defined_params[target])
         try:
-            result_params[target] = type_(value)
+            if type_ == bool:
+                if value.lower() in ('true', 'on', '1'):
+                    value = True
+                elif value.lower() in ('false', 'off', '0'):
+                    value = False
+                else:
+                    raise TypeError()
+            else:
+                result_params[target] = type_(value)
         except:
             raise TypeError('Invalid value detected on the cast:{}, str->{}'.format(value, type_))
     return result_params
