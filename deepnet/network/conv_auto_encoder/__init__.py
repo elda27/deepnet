@@ -196,10 +196,12 @@ def ValiationAutoEncoderUnit(input_vector):
     return input_vector[:representation_dim] + input_vector[representation_dim:] * F.gaussian(0, ones)
 
 @register_network('network.cae')
+@declare_node_type('chainer')
 class ConvolutionalAutoEncoder(chainer.Chain):
     def __init__(self, 
-        n_dim, in_out_channel, 
+        n_dim, in_channel, out_channel,
         encode_dim=64, n_layers=4, n_res_layers=0, 
+        n_tasks = 1,
         dropout='none', use_batch_norm=True,
         use_skipping_connection='none', 
         vae_unit=None,
@@ -209,30 +211,39 @@ class ConvolutionalAutoEncoder(chainer.Chain):
         self.layers = {}
         self.stores = {}
         self.n_dim = n_dim
+        self.n_tasks = n_tasks
         self.use_batch_norm = use_batch_norm
         self.dropout = dropout
         self.use_skipping_connection = use_skipping_connection
         self.latent_activation = latent_activation
         self.vae_unit = None
+        self.in_channel = in_channel
+        self.out_channel = out_channel if isinstance(out_channel, list) else [out_channel]
+
+        self.decoders = []
 
         chainer.Chain.__init__(self)
         with self.init_scope():
             self.encoder = Encoder(
-                n_dim, in_out_channel, 
+                n_dim, in_channel, 
                 encode_dim=encode_dim, 
                 n_layers=n_layers, n_res_layers=n_res_layers,
                 dropout=dropout, use_batch_norm=use_batch_norm
                 )
-            self.decoder = Decoder(
-                n_dim, in_out_channel, 
-                input_dim=encode_dim, 
-                n_layers=n_layers, 
-                n_start_units=32, n_res_layers=n_res_layers,
-                dropout=dropout, use_batch_norm=use_batch_norm,
-                use_skipping_connection=use_skipping_connection
-                )
+            for i in range(self.n_tasks):
+                setattr(self, f'decoder{i}', Decoder(
+                    n_dim, self.out_channel[i], 
+                    input_dim=encode_dim, 
+                    n_layers=n_layers, 
+                    n_start_units=32, n_res_layers=n_res_layers,
+                    dropout=dropout, use_batch_norm=use_batch_norm,
+                    use_skipping_connection=use_skipping_connection
+                    ))
+                self.decoders.append(getattr(self, f'decoder{i}'))
+
         self.layers['encoder'] = self.encoder
-        self.layers['decoder'] = self.decoder
+        for i, decoder in enumerate(self.decoders):
+            self.layers[f'decoder{i}'] = decoder
 
     def __call__(self, x):
         h = self.encoder(x)
@@ -242,9 +253,14 @@ class ConvolutionalAutoEncoder(chainer.Chain):
 
         self.stores['encoder'] = h
 
-        if self.use_skipping_connection:
-            h = self.decoder(h, self.encoder.stores)
-        else:
-            h = self.decoder(h)
-        h = utils.crop(h, x.shape, self.n_dim)
-        return h
+        results = []
+        latent_h = h
+        for decoder in self.decoders:
+            if self.use_skipping_connection:
+                h = decoder(latent_h, self.encoder.stores)
+            else:
+                h = decoder(h)
+            h = utils.crop(h, x.shape, self.n_dim)
+            results.append(h)
+            
+        return results
