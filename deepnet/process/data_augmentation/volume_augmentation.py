@@ -77,15 +77,13 @@ class VolumeDataGenerator(object):
             in the range [1-z, 1+z]. A sequence of two can be passed instead
             to select this range.
         intensity_range: intensity (0 to Inf).
-        fill_mode_x: points outside the boundaries are filled according to the
+        fill_mode: points outside the boundaries are filled according to the
             given mode ('constant', 'nearest', 'reflect' or 'wrap'). Default
             is 'nearest'.
-        fill_mode_y: Default is 'constant'.
-        cval_x: value used for points outside the boundaries when fill_mode is
+        cval: value used for points outside the boundaries when fill_mode is
             'constant'. Default is 0.
-        cval_y: Default is -1.            
-        interp_order_x: Spline order. Default is 1.
-        interp_order_y: Default is 0.
+        interp_order: Spline order. If the order is zero, the interpolation will be
+                      nearest neigbor. Default is 1.
         random_crop: crop input volume randomly.
         crop_size: crop to specific size.
         crop_order: the order to crop. If set to 'pre', geometric transformation
@@ -100,15 +98,12 @@ class VolumeDataGenerator(object):
                  translation_range=0.,  # [%]
                  zoom_range=0.,        # [%]
                  intensity_range=0.,   # [intensity]
-                 fill_mode_x='constant',
-                 fill_mode_y='constant',
+                 fill_mode='nearest',
                  horizontal_flip=False,
                  vertical_flip=False,
                  depth_flip=False,
-                 cval_x=0.,
-                 cval_y=-1.,  # for categorical label
-                 interp_order_x=1,  # spline order
-                 interp_order_y=0,
+                 cval=0.,
+                 interp_order=1,
                  random_crop=False,
                  crop_size=[100, 100, 100],
                  crop_order='pre',
@@ -118,12 +113,9 @@ class VolumeDataGenerator(object):
         self.translation_range = translation_range
         self.zoom_range = zoom_range
         self.intensity_range = intensity_range
-        self.fill_mode_x = fill_mode_x
-        self.fill_mode_y = fill_mode_y
-        self.cval_x = cval_x
-        self.cval_y = cval_y
-        self.interp_order_x = interp_order_x
-        self.interp_order_y = interp_order_y
+        self.fill_mode = fill_mode
+        self.cval = cval
+        self.interp_order = interp_order
         self.horizontal_flip = horizontal_flip
         self.vertical_flip = vertical_flip
         self.depth_flip = depth_flip
@@ -242,10 +234,7 @@ class VolumeDataGenerator(object):
             self.transform_matrix = zoom_matrix if self.transform_matrix is None else xp.dot(
                 self.transform_matrix, zoom_matrix)
 
-<<<<<<< HEAD
         self.transform_matrix_origin = self.transform_matrix.copy()
-=======
->>>>>>> new-network-stream
         if self.transform_matrix is not None:
             self.transform_matrix = transform_matrix_offset_center(
                 self.transform_matrix, h, w, z)
@@ -282,7 +271,20 @@ class VolumeDataGenerator(object):
         # 　""" apply transform """
         return self.fixed_transform(x)
 
-    def fixed_transform(self, input):
+    def fixed_transform(self, input, label=False):
+        old_interp_order = self.interp_order
+        old_constant = self.cval
+
+        try:
+            if label:
+                self.interp_order = 0
+                self.c_val = 0
+            return self.fixed_transform_(input)
+        finally:
+            self.interp_order = old_interp_order
+            self.cval = old_constant
+
+    def fixed_transform_(self, input):
         xp = chainer.cuda.get_array_module(input)
         x = None
         if isinstance(x, chainer.Variable):
@@ -301,9 +303,9 @@ class VolumeDataGenerator(object):
 
         if self.transform_matrix is not None:
             x = apply_transform(x, self.transform_matrix,
-                                fill_mode=self.fill_mode_x,
-                                cval=self.cval_x,
-                                interp_order=self.interp_order_x)
+                                fill_mode=self.fill_mode,
+                                cval=self.cval,
+                                interp_order=self.interp_order)
 
         if self.horizontal_flip_prob > 0.5:
             x = flip_axis(x, img_col_axis)
