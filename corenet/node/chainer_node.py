@@ -1,4 +1,6 @@
 from .updatable_node import UpdatableNode
+from chainer import cuda
+
 
 class ChainerNode(UpdatableNode):
     Updaters = {}
@@ -14,6 +16,7 @@ class ChainerNode(UpdatableNode):
 
     def update_after(self):
         ChainerNode.Updaters[self.update_variable].update()
+
     @classmethod
     def add_updater(cls, name, updater):
         cls.Updaters[name] = updater
