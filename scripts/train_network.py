@@ -98,7 +98,10 @@ def main():
         ]
     archive_nodes = network_config['config']['archive_nodes']
     optimizing_loss = network_config['config']['optimizing_loss']
-
+    write_architecture_loss = (
+        os.path.join(log_dirs['archive'], 'model.png'), 
+        network_config['config'].get('archive_loss')
+    )
     # Setup optimizer
     optimizers = []
     optimizer = chainer.optimizers.Adam(args.lr_rate)
@@ -130,7 +133,7 @@ def main():
                     name: dict(
                         input= node.input,
                         output= node.output,
-                        updatable= node.updatable if issubclass(type(node), UpdatableNode) else None,
+                        updatable= node.update_variable if issubclass(type(node), UpdatableNode) else None,
                         model= str(node.model),
                         attr = { key: str(value) for key, value in node.attrs.items()},
                         args= { name: str(node.args) for name, arg in node.args.items() }
@@ -146,10 +149,15 @@ def main():
 
     optimizer_dict = { loss: optimizer for loss, optimizer in zip(optimizing_loss, optimizers) }
 
+    if args.debug:
+        iterator_type = chainer.iterators.SerialIterator
+    else:
+        iterator_type = chainer.iterators.MultiprocessIterator
+
     trainer = deepnet.utils.trainer.Trainer(
         network=network_manager,
-        train_iter=chainer.iterators.MultiprocessIterator(train_dataset, sum(args.batch_size), shuffle=True, repeat=True),
-        valid_iter=chainer.iterators.MultiprocessIterator(valid_dataset, sum(args.batch_size), shuffle=False, repeat=False),
+        train_iter=iterator_type(train_dataset, sum(args.batch_size), shuffle=True, repeat=True),
+        valid_iter=iterator_type(valid_dataset, sum(args.batch_size), shuffle=False, repeat=False),
         visualizers=visualizers,
         optimizer=optimizer_dict,
         logger=logger,
@@ -157,7 +165,8 @@ def main():
         archive_nodes=archive_nodes,
         train_config=train_config,
         postprocessor=postprocessor,
-        redirect=parse_redirect_string(args.redirect)
+        redirect=parse_redirect_string(args.redirect),
+        architecture_loss=write_architecture_loss
     )
 
     trainer.train()
@@ -193,6 +202,7 @@ def build_arguments():
     parser.add_argument('--step-index', type=int, default=1, help='step index')
 
     parser.add_argument('--redirect', type=str, default=[], nargs='*', help='To redirect input variables.')
+    parser.add_argument('--debug', action='store_true', default=False, help='If true, this session will start single process.')
 
     return parser
 
