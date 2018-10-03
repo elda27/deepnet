@@ -27,8 +27,8 @@ class Logger:
         for var_name, weight in zip_longest(self.dump_variables, self.weights):
             if var_name not in variables:
                 dump_vars[var_name] = ''
-                appendix_vars[f'raw.{var_name}'] = ''
-                appendix_vars[f'weight.{var_name}'] = ''
+                appendix_vars['raw.{}'.format(var_name)] = ''
+                appendix_vars['weight.{}'.format(var_name)] = ''
                 continue
 
             if isinstance(weight, str):
@@ -52,8 +52,8 @@ class Logger:
 
             if weight is not None:
                 dump_vars[var_name] = variables[var_name] * float(weight)
-                appendix_vars[f'raw.{var_name}'] = variables[var_name]
-                appendix_vars[f'weight.{var_name}'] = float(weight)
+                appendix_vars['raw.{}'.format(var_name)] = variables[var_name]
+                appendix_vars['weight.{}'.format(var_name)] = float(weight)
             else:
                 dump_vars[var_name] = variables[var_name]
 

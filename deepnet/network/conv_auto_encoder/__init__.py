@@ -231,7 +231,7 @@ class ConvolutionalAutoEncoder(chainer.Chain):
                 dropout=dropout, use_batch_norm=use_batch_norm
                 )
             for i in range(self.n_tasks):
-                setattr(self, f'decoder{i}', Decoder(
+                setattr(self, 'decoder{}'.format(i), Decoder(
                     n_dim, self.out_channel[i], 
                     input_dim=encode_dim, 
                     n_layers=n_layers, 
@@ -239,11 +239,11 @@ class ConvolutionalAutoEncoder(chainer.Chain):
                     dropout=dropout, use_batch_norm=use_batch_norm,
                     use_skipping_connection=use_skipping_connection
                     ))
-                self.decoders.append(getattr(self, f'decoder{i}'))
+                self.decoders.append(getattr(self, 'decoder{}'.format(i)))
 
         self.layers['encoder'] = self.encoder
         for i, decoder in enumerate(self.decoders):
-            self.layers[f'decoder{i}'] = decoder
+            self.layers['decoder{}'.format(i)] = decoder
 
     def __call__(self, x):
         h = self.encoder(x)

@@ -68,4 +68,4 @@ class ProcessPointer:
 
     def __str__(self):
         self.sync()
-        return f'Pos:{self.position}, Cursor:{self.names[self.position]}'
+        return 'Pos:{}, Cursor:{}'.format(self.position, self.names[self.position])

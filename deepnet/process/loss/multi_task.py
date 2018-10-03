@@ -24,7 +24,7 @@ class MultiTaskLoss(chainer.Chain):
             with self.init_scope():
                 w = initialize[i]
                 setattr(
-                    self, f'sigma_{i}',
+                    self, 'sigma_{}'.format(i),
                     chainer.Parameter(
                         initializer=w,
                         shape=(1,)
@@ -45,7 +45,7 @@ class MultiTaskLoss(chainer.Chain):
         loss = None
         #w_root = 1.0
         for i, combine_method in enumerate(self.combine_methods):
-            W = getattr(self, f'sigma_{i}')
+            W = getattr(self, 'sigma_{}'.format(i))
             #W = W * w_root
             if loss is None:
                 loss = combine_method(
