@@ -14,42 +14,45 @@ import gc
 from time import sleep
 import corenet
 
+
 class Trainer:
-    def __init__(self, 
-        network, train_iter, valid_iter, 
-        visualizers, train_config, optimizer, 
-        logger, archive_dir, archive_nodes,
-        postprocessor, redirect,
-        ):
-        
+    def __init__(self,
+                 network, train_iter, valid_iter,
+                 visualizers, train_config, optimizer,
+                 logger, archive_dir, archive_nodes,
+                 postprocessor, redirect, architecture_loss,
+                 ):
+
         config.set_global_config('main_network', network)
 
         self.network = network
         self.train_config = train_config
-        
+
         self.n_max_train_iter = train_config['n_max_train_iter']
-        self.n_max_valid_iter = train_config['n_max_valid_iter'] if train_config['n_max_valid_iter'] is not None else len(valid_iter.dataset)
+        self.n_max_valid_iter = train_config['n_max_valid_iter'] if train_config['n_max_valid_iter'] is not None else len(
+            valid_iter.dataset)
         self.n_valid_step = train_config['n_valid_step']
-        
+
         self.progress_vars = train_config['progress_vars']
-        
+
         self.train_iter = train_iter
         self.valid_iter = valid_iter
-        
+
         self.archive_dir = archive_dir
         self.archive_nodes = archive_nodes
 
         self.visualizers = visualizers
         self.postprocessor = postprocessor
-        
+
         self.optimizer = optimizer
         for key, optimizer in self.optimizer.items():
             corenet.ChainerNode.add_updater(key, optimizer)
-        
+
         self.logger = logger
         self.dump_variables = []
 
         self.redirect = redirect
+        self.architecture_loss = architecture_loss
 
         for l in self.logger:
             for var_name in l.dump_variables:
@@ -74,24 +77,33 @@ class Trainer:
                 for stage_input in input_vars:
                     self.inference(stage_input, is_train=True)
                 sleep(1e-3)
-                
-                # Back propagation and update network 
+
+                # Back propagation and update network
                 self.network.update()
 
                 # Update variables.
                 variables.update(self.network.variables)
                 self.network.variables.clear()
 
+                # Save network architecture
+                if self.train_iteration == 0:
+                    self.write_network_architecture(
+                        self.architecture_loss[0],
+                        variables[self.architecture_loss[1]]
+                    )
+
                 # Update variables and unwrapping chainer variable
                 for var_name, value in variables.items():
                     variables[var_name] = utils.unwrapped(value)
-                variables.update({ 'train.' + name: utils.unwrapped(value) for name, value in variables.items() })
+                variables.update({'train.' + name: utils.unwrapped(value)
+                                  for name, value in variables.items()})
 
                 # validation if current iteraiton is multiplier as n_valid_step
                 valid_keys = []
                 if i % self.n_valid_step == 0:
                     valid_variables = self.validate(variables=variables)
-                    variables.update({ 'valid.' + name: value for name, value in valid_variables.items() })
+                    variables.update(
+                        {'valid.' + name: value for name, value in valid_variables.items()})
                     self.network.variables.clear()
                     del valid_variables
 
@@ -109,11 +121,10 @@ class Trainer:
                 variables.clear()
                 gc.collect()
 
-                
     def validate(self, variables):
         valid_variables = dict()
         with tqdm.tqdm(total=self.n_max_valid_iter) as pbar, \
-            chainer.no_backprop_mode():
+                chainer.no_backprop_mode():
             self.valid_iter.reset()
             for i, batch in enumerate(self.valid_iter):
                 sleep(1e-3)
@@ -129,21 +140,23 @@ class Trainer:
                     self.inference(stage_input, is_train=False)
                     variables['__stage__'] = j
                     variables.update(self.network.variables)
-                
+
                 for visualizer in self.visualizers:
                     visualizer(variables)
-                
+
                 # Update variables
                 for var_name in self.dump_variables:
                     var = variables[var_name]
-                    if var_name not in valid_variables: # Initialize variable
+                    if var_name not in valid_variables:  # Initialize variable
                         if isinstance(var, chainer.Variable):
-                            valid_variables[var_name] = chainer.functions.copy(var, -1)
+                            valid_variables[var_name] = chainer.functions.copy(
+                                var, -1)
                         else:
                             valid_variables[var_name] = var
                     else:
                         if isinstance(var, chainer.Variable):
-                            valid_variables[var_name] += chainer.functions.copy(var, -1)
+                            valid_variables[var_name] += chainer.functions.copy(
+                                var, -1)
 
                 # Post processing
                 self.postprocessor(variables, 'valid', True)
@@ -152,12 +165,13 @@ class Trainer:
                 if self.n_max_valid_iter <= (i + 1) * self.valid_iter.batch_size:
                     break
             pbar.close()
-        
+
         for node_name in self.archive_nodes:
             serializers.save_npz(
-                os.path.join(self.archive_dir, node_name +'_{:08d}.npz'.format(variables['__train_iteration__'])), 
+                os.path.join(self.archive_dir, node_name +
+                             '_{:08d}.npz'.format(variables['__train_iteration__'])),
                 self.network.get_node(node_name).model
-                )
+            )
 
         # Post processing
         self.postprocessor(variables, 'valid', False)
@@ -168,7 +182,9 @@ class Trainer:
             denom = float(self.n_max_valid_iter) / self.valid_iter.batch_size
             if isinstance(var, chainer.Variable):
                 if self.train_config['gpu'][0] >= 0:
-                    valid_variables[var_name] = float(chainer.cuda.to_cpu((var / denom).data))
+                    valid_variables[var_name] = float(
+                        chainer.cuda.to_cpu((var / denom).data)
+                    )
                 else:
                     valid_variables[var_name] = float((var / denom).data)
         # Save visualized results
@@ -183,7 +199,7 @@ class Trainer:
         disp_vars = {}
         display_var_formats = []
         for var_format in self.progress_vars:
-            # 
+            #
             var_name = ''
             pos = var_format.find(':')
             if pos == -1:
@@ -193,7 +209,7 @@ class Trainer:
 
             # cast variable
             var = variables[var_name]
-            display_var_formats.append(var_name + '=' +'{' + var_format + '}')
+            display_var_formats.append(var_name + '=' + '{' + var_format + '}')
             if isinstance(var, chainer.Variable):
                 value = None
                 if self.train_config['gpu'][0] >= 0:
@@ -201,19 +217,25 @@ class Trainer:
                 else:
                     value = var.data
                 if isinstance(value, np.ndarray):
-                    if value.ndim == 0:
+                    if value.ndim == 0 or value.size == 1:
                         disp_vars[var_name] = float(value)
                     else:
                         disp_vars[var_name] = value.to_list()
+            elif isinstance(var, np.ndarray):
+                if var.ndim == 0 or var.size == 1:
+                    disp_vars[var_name] = float(var)
+                else:
+                    disp_vars[var_name] = var.to_list()
             else:
                 disp_vars[var_name] = var
-        
+
         display_format = 'train[' + ','.join(display_var_formats) + ']'
-        pbar.set_description(display_format.format(**disp_vars, __iteration__=variables['__iteration__']))
+        pbar.set_description(display_format.format(
+            **disp_vars, __iteration__=variables['__iteration__']))
 
     def batch_to_vars(self, batch):
         # batch to vars
-        input_vars = [ dict() for elem in batch[0] ]
+        input_vars = [dict() for elem in batch[0]]
         for elem in batch:              # loop about batch
             for i, stage_input in enumerate(elem):    # loop about stage input
                 for name, input_ in stage_input.items():
@@ -232,8 +254,8 @@ class Trainer:
             o.write(cg.build_computational_graph((loss, )).dump())
 
         try:
-            subprocess.call('dot -T png {} -o {}'.format(graph_filename, 
-                            graph_filename.replace('.dot', '.png')), 
+            subprocess.call('dot -T png {} -o {}'.format(graph_filename,
+                                                         graph_filename.replace('.dot', '.png')),
                             shell=True)
         except:
             warnings.warn('please install graphviz and set your environment.')
