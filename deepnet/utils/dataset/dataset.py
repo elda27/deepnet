@@ -6,7 +6,11 @@ import warnings
 import imageio
 import numpy as np
 import abc
-from plyfile import PlyData
+try:
+    from plyfile import PlyData
+    ENABLE_POLY_SUPPORT=True
+except:
+    ENABLE_POLY_SUPPORT=False
 from logging import getLogger
 
 logger = getLogger(__name__)
@@ -278,7 +282,7 @@ def load_image(filename):
 def load_surface(filename):
     _, ext = os.path.splitext( os.path.basename(filename) )
 
-    if ext in ('.ply'):
+    if ext in ('.ply') and ENABLE_POLY_SUPPORT:
         data = PlyData.read(filename)
         return data['vertex']
     elif ext in ('.npy'):
