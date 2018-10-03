@@ -27,6 +27,7 @@ n_encode_dim = 512
 n_layers = 3
 gaussian_sigma = 20
 n_res_layers = 4
+fixed_multi_task_update = false
 
 [[process]]
 label  = "CAE"
@@ -47,7 +48,8 @@ latent_activation = false # If true, the sparse penalty is avaiable.
 [[process]]
 label="multi_task_combine"
 loss_types=["euclidean", "softmax_cross_entropy"]
-#initialize=[1.0, 100.0]
+initialize=[1.0, 200.0]
+fixed  = "${hyper_parameter.fixed_multi_task_update}"
 type   = "network.multi_task_loss"
 
 [[network]]

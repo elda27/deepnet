@@ -34,6 +34,7 @@ n_res_layers = 4
 
 weight_reconstruct = 1.0
 weight_gradient = -1e4
+fixed_multi_task_update = false
 
 [[process]]
 label  = "CAE"
@@ -66,6 +67,7 @@ in_channel = 2
 label="multi_task_combine"
 loss_types=["euclidean", "softmax_cross_entropy"]
 type   = "network.multi_task_loss"
+fixed  = "${hyper_parameter.fixed_multi_task_update}"
 
 [[initialize]]
 mode = "load"
