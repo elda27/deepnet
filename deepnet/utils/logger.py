@@ -4,39 +4,66 @@ from contextlib import ExitStack
 import chainer
 from itertools import zip_longest
 from collections import OrderedDict
+from deepnet.utils.functions import get_field
+#from deepnet.core.registration import get_registered_process
+#from deepnet.core.network.build import get_process
+import deepnet.core.network.build
+from deepnet import utils
+
 
 class Logger:
     def __init__(self, output_filename, dump_variables, variable_weights):
         self.output_filename = output_filename
         self.dump_variables = dump_variables
         self.weights = variable_weights
-        
+
         if os.path.exists(output_filename):
             os.remove(output_filename)
 
     def __call__(self, variables, is_valid=False):
         dump_vars = OrderedDict()
-        added_vars = OrderedDict()
+        appendix_vars = OrderedDict()
 
         for var_name, weight in zip_longest(self.dump_variables, self.weights):
             if var_name not in variables:
                 dump_vars[var_name] = ''
-                if weight is not None and not (isinstance(weight, str) and weight == ''):
-                    added_vars[var_name + '.raw'] = ''
+                appendix_vars[f'raw.{var_name}'] = ''
+                appendix_vars[f'weight.{var_name}'] = ''
                 continue
-            
-            if weight is not None and not (isinstance(weight, str) and weight == ''):
+
+            if isinstance(weight, str):
+                if weight == '':
+                    weight = None
+                elif weight in variables:
+                    member = weight.split('.')
+                    var_name = member[0]
+                    fields = member[1:]
+                    weight = get_field(variables[var_name], fields)
+                else:
+                    member = weight.split('.')
+                    name = member[0]
+                    fields = member[1:]
+                    try:
+                        process = deepnet.core.network.build.get_process(name)
+                        weight = get_field(process, fields)
+                        weight = utils.unwrapped(weight)
+                    except:
+                        weight = None
+
+            if weight is not None:
                 dump_vars[var_name] = variables[var_name] * float(weight)
-                added_vars[var_name + '.raw'] = variables[var_name]
+                appendix_vars[f'raw.{var_name}'] = variables[var_name]
+                appendix_vars[f'weight.{var_name}'] = float(weight)
             else:
                 dump_vars[var_name] = variables[var_name]
-        
-        dump_vars.update(added_vars)
+
+        dump_vars.update(appendix_vars)
         self.dump(dump_vars)
 
     @abstractmethod
     def dump(self, dump_vars):
         raise NotImplementedError()
+
 
 class CsvLogger(Logger):
     def dump(self, dump_vars):
@@ -48,4 +75,5 @@ class CsvLogger(Logger):
             else:
                 fp = estack.enter_context(open(self.output_filename, 'a'))
 
-            fp.write(','.join([ str(dump_vars[var_name]) for var_name in dump_vars ]) + '\n')
+            fp.write(','.join([str(dump_vars[var_name])
+                               for var_name in dump_vars]) + '\n')
