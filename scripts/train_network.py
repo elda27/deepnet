@@ -114,7 +114,9 @@ def main():
     optimizers.append(optimizer)
 
     # Freeze to update layer
-    for layer_name in network_config['config'].get('freezing_layer', []):
+    disables_layers = network_config['config'].get('freezing_layer', [])
+    disables_layers.extend(args.freeze)
+    for layer_name in disables_layers:
         layers = layer_name.split('.')
         model = deepnet.core.registration.get_process(layers[0])
         deepnet.utils.get_field(model, layers[1:]).disable_update()
@@ -201,7 +203,9 @@ def build_arguments():
     parser.add_argument('--log-index', type=int, default=None, help='Log direcotry index for training.')
     parser.add_argument('--step-index', type=int, default=1, help='step index')
 
+    parser.add_argument('--freeze', type=str, default=[], nargs='*', help='Disable to update processes declared in network config.')
     parser.add_argument('--redirect', type=str, default=[], nargs='*', help='To redirect input variables.')
+
     parser.add_argument('--debug', action='store_true', default=False, help='If true, this session will start single process.')
 
     return parser
