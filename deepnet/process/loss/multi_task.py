@@ -10,7 +10,7 @@ import functools
 @register_network('network.multi_task_loss')
 @declare_node_type('chainer')
 class MultiTaskLoss(chainer.Chain):
-    def __init__(self, loss_types, initialize=None, fixed=False):
+    def __init__(self, loss_types, initialize=None):
         super().__init__()
         self.loss_types = loss_types
         self.combine_methods = []
@@ -37,9 +37,6 @@ class MultiTaskLoss(chainer.Chain):
                 self.combine_methods.append(self.combine_euclidean)
             else:
                 raise AttributeError()
-
-        if fixed:
-            self.disable_update()
 
     def __call__(self, *losses):
         loss = None
