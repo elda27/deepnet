@@ -118,7 +118,7 @@ def main():
     disables_layers.extend(args.freeze)
     for layer_name in disables_layers:
         layers = layer_name.split('.')
-        model = deepnet.core.registration.get_process(layers[0])
+        model = deepnet.core.registration.get_registered_process(layers[0])
         deepnet.utils.get_field(model, layers[1:]).disable_update()
 
     # Save variables
