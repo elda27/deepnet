@@ -14,7 +14,6 @@ class MultiTaskLoss(chainer.Chain):
         super().__init__()
         self.loss_types = loss_types
         self.combine_methods = []
-        self.fixed = fixed
 
         if initialize is None:
             initialize = [chainer.initializers.Constant(1.0)
