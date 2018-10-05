@@ -196,7 +196,10 @@ class MhdImageWriter(Visualizer):
         for name, images in figs.items():
             for i, image in enumerate(images):
                 header = {}
-                img = np.squeeze(image)
+                #img = np.squeeze(image)
+                single_axis = tuple(s for s in range(image.ndim) if s == 1)
+                image = np.delete(image, axis=single_axis)
+
                 if 'spacing' in self.variables:
                     spacing = self.variables['spacing'][i]
                     if len(spacing) < img.ndim:
