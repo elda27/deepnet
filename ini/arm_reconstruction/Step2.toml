@@ -39,12 +39,13 @@ type   = "network.cae"
 
 # Arguments
 n_dim = 3
-in_out_channel = 1
+in_channel = 1
+out_channel = 1
 encode_dim = "${hyper_parameter.n_encode_dim}"
 dropout = "dropout"
 use_batch_norm = true
 n_layers = "${hyper_parameter.n_layers}"
-latent_activation = true # For sparse penalty
+latent_activation = false # For sparse penalty
 
 [[process]]
 label = "Segnet"
