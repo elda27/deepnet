@@ -150,6 +150,11 @@ def build_networks(config, step=None):
 
 @register_argument_wrapper('network')
 def wrap_network_name(network_name):
-    names = network_name.split('.')
-    model = get_process(names[0])
-    return deepnet.utils.get_field(model, names[1:])
+    if isinstance(network_name, str):
+        names = network_name.split('.')
+        model = get_process(names[0])
+        return deepnet.utils.get_field(model, names[1:])
+    elif isinstance(network_name, list):
+        return [wrap_network_name(name) for name in network_name]
+    else:
+        raise NotImplementedError()

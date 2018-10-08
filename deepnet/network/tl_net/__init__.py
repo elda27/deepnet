@@ -23,9 +23,17 @@ class Segnet(chainer.Chain):
         self.output_shape = output_shape
         
         super().__init__()
+        self.decoders = []
         self.use_skipping_connection = use_skipping_connection
         with self.init_scope():
-            self.decoder = decoder
+            if isinstance(decoder, list):
+                for i, d in enumerate(decoder):
+                    decoder_name = 'decoder{}'.format(i)
+                    setattr(self, decoder_name, d)
+                    self.decoders.append(decoder_name)
+            else:
+                self.decoder = decoder
+                self.decoders.append(decoder)
             self.encoder = conv_auto_encoder.Encoder(
                 n_dim, in_channel,
                 encode_dim= self.decoder.input_dim,
@@ -45,21 +53,31 @@ class Segnet(chainer.Chain):
     def __call__(self, x):
         h = self.encoder(x)
         self.stores['encoder'] = h
+        
+        if hasattr(self, 'decoder'):
+            return self.decode('decode', h)
+        else:
+            decode_results = []
+            for decoder_name in self.decoders:
+                decode_results.append(decode(decoder_name, h))
 
-        old_skip_flag = self.decoder.use_skipping_connection
-        self.decoder.use_skipping_connection = self.use_skipping_connection
+            return decode_results
 
-        h = self.decoder(h, connections=self.encoder.stores)
+    def decode(self, deocder_name, h):
+        decoder = getattr(self, deocder_name)
+        old_skip_flag = decoder.use_skipping_connection
+        decoder.use_skipping_connection = self.use_skipping_connection
+
+        h = decoder(h, connections=self.encoder.stores)
 
         output_shape = None
         if self.output_shape is None:
             output_shape = x.shape
         else:
-            output_shape = (x.shape[0], self.decoder.out_channel) + tuple(self.output_shape)
-        h = utils.crop(h, output_shape, self.decoder.n_dim)
+            output_shape = (x.shape[0], decoder.out_channel) + tuple(self.output_shape)
+        h = utils.crop(h, output_shape, decoder.n_dim)
 
-        self.stores['decoder'] = h
+        self.stores[decoder_name] = h
 
-        self.decoder.use_skipping_connection = old_skip_flag
+        decoder.use_skipping_connection = old_skip_flag
         
-        return h
