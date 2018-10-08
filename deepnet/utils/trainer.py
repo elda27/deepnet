@@ -52,10 +52,7 @@ class Trainer:
         self.dump_variables = []
 
         self.redirect = redirect
-        if isinstance(architecture_loss, list):
-            self.architecture_loss = architecture_loss
-        else:
-            self.architecture_loss = ('network_architecture.dot', architecture_loss)
+        self.architecture_loss = architecture_loss
 
         for l in self.logger:
             for var_name in l.dump_variables:
