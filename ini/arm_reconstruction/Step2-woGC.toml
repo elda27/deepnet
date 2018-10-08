@@ -3,28 +3,18 @@
 input = [
   "volume",
   "spacing",
-  "label",
   "projections",
   "projections_spacing"
 ]
 
 logging = [
   '__train_iteration__', 
-  'train.loss_reconstruct_volume', 'valid.loss_reconstruct_volume',
-  'train.loss_reconstruct_label', 'valid.loss_reconstruct_label',
   'train.loss', 'valid.loss'
 ]
-logging_weights = [
-  "", 
-  "multi_task_combine.sigma_0", "multi_task_combine.sigma_0", 
-  "multi_task_combine.sigma_1", "multi_task_combine.sigma_1", 
-  "", ""
-]
 
-archive_loss = 'loss'
 archive_nodes = ['Segnet']
 optimizing_loss = ['loss']
-freezing_layer = [ 'Segnet.decoder1', 'Segnet.decoder2' ]
+freezing_layer = [ 'Segnet.decoder' ]
 
 [hyper_parameter]
 n_encode_dim = 512
@@ -33,6 +23,7 @@ gaussian_sigma = 20
 n_res_layers = 4
 
 weight_reconstruct = 1.0
+weight_gradient = -1e4
 
 [[process]]
 label  = "CAE"
@@ -40,31 +31,25 @@ type   = "network.cae"
 
 # Arguments
 n_dim = 3
-n_task = 2
 in_channel = 1
-out_channel = [1, 4]
+out_channel = 1
 encode_dim = "${hyper_parameter.n_encode_dim}"
 dropout = "dropout"
 use_batch_norm = true
 n_layers = "${hyper_parameter.n_layers}"
-latent_activation = true # For sparse penalty
+latent_activation = false # For sparse penalty
 
 [[process]]
 label = "Segnet"
 type = "network.tl-net.segnet"
 update = "loss"
 
-decoder = [ "CAE.decoder1", "CAE.decoder2" ]
+decoder = "CAE.decoder"
 
 n_dim = 2
 output_shape = [64, 64, 64]
 
 in_channel = 2
-
-[[process]]
-label="multi_task_combine"
-loss_types=["euclidean", "softmax_cross_entropy"]
-type   = "network.multi_task_loss"
 
 [[initialize]]
 mode = "load"
@@ -73,13 +58,8 @@ from_step = 1
 
 [[initialize]]
 mode = "share"
-from = "CAE.decoder1"
-to = "Segnet.decoder1"
-
-[[initialize]]
-mode = "share"
-from = "CAE.decoder2"
-to = "Segnet.decoder2"
+from = "CAE.decoder"
+to = "Segnet.decoder"
 
 # Network declaration
 [[network]]
@@ -94,37 +74,22 @@ axis = 1
 output = "volume_expanded"
 
 [[network]]
-input=["volume_expanded", "label"]
-process="to_gpu"
-output=["gpu_volume", "gpu_label"]
+input   = "volume_expanded"
+process = "to_gpu"
+output  = "gpu_volume"
 
 [[network]]
 input="gpu_rendering_image"
 process = "Segnet"
 label   = "Segnet"
-output  = ["gpu_reconstruct_volume", "gpu_reconstruct_probs"]
+output  = "gpu_reconstruct_volume"
 
 [[network]]
 input=[ "gpu_volume", "gpu_reconstruct_volume" ]
 process="loss.euclidean_distance"
-output ="loss_euclidean"
+output ="loss"
 test=false
 
-
-[[network]]
-input=[ "gpu_reconstruct_probs", "gpu_label" ]
-process="chainer.softmax_cross_entropy"
-output="loss_reconstruct_label"
-
-[[network]]
-input=["loss_reconstruct_volume", "loss_reconstruct_label"]
-process="multi_task_combine"
-output="loss"
-
-[[network]]
-input='gpu_reconstruct_probs'
-process='chainer.softmax'
-output='gpu_reconstruct_label'
 
 [[network]]
 input = ["gpu_reconstruct_volume", "gpu_volume"]

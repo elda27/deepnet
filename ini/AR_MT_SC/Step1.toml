@@ -42,6 +42,7 @@ encode_dim = "${hyper_parameter.n_encode_dim}"
 dropout = "dropout"
 use_batch_norm = true
 n_layers = "${hyper_parameter.n_layers}"
+use_skipping_connection = "concat"
 latent_activation = false # If true, the sparse penalty is avaiable.
 
 [[process]]

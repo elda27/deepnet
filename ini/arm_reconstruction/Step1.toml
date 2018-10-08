@@ -48,26 +48,15 @@ n_layers = "${hyper_parameter.n_layers}"
 latent_activation = false # For sparse penalty
 
 # Network declaration
-## Data augmentation
-[[network]]
-input=["volume"]
-process='random_transform'
-output=["volume_aug"]
-
-mode = "volume"
-rotation    = 10
-translation = 0
-zoom        = 0
-intensity   = 0
 
 [[network]]
-input="volume_aug"
+input="volume"
 process="expand_dims"
-output="volume_aug_expanded"
+output="volume_expanded"
 axis=1
 
 [[network]]
-input=["volume_aug_expanded"]
+input=["volume_expanded"]
 process="to_gpu"
 output=["gpu_volume"]
 
