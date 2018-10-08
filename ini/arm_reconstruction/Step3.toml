@@ -22,6 +22,7 @@ logging_weights = [
   "", ""
 ]
 
+archive_loss = 'loss'
 archive_nodes = ['Segnet']
 optimizing_loss = ['loss']
 freezing_layer = [ 'CAE.encoder' ]

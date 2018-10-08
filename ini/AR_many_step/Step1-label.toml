@@ -10,6 +10,7 @@ logging = [
   'train.loss', 'valid.loss'
 ]
 
+archive_loss = 'loss'
 archive_nodes = ['CAE']
 optimizing_loss = ['loss']
 

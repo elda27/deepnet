@@ -12,6 +12,7 @@ logging = [
   'train.loss', 'valid.loss'
 ]
 
+archive_loss = 'loss'
 archive_nodes = ['Segnet']
 optimizing_loss = ['loss']
 freezing_layer = [ 'Segnet.decoder' ]

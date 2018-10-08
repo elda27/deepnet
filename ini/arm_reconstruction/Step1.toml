@@ -19,6 +19,7 @@ logging_weights = [
   "", ""
 ]
 
+archive_loss = 'loss'
 archive_nodes = ['CAE']
 optimizing_loss = ['loss']
 
