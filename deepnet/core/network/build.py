@@ -60,6 +60,10 @@ def get_process(name):
     return _created_process[name]['proc']
 
 
+def get_created_process_list():
+    return _created_process
+
+
 def build_networks(config, step=None):
     """Construct network and visualizers from the configuration.
 
