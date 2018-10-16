@@ -22,10 +22,10 @@ class NetworkNode:
             else:
                 return isinstance(a, str)
 
-        assert recusrsive_check_instance(
-            self.input),  'Input must be string: {}'.format(self.input)
-        assert recusrsive_check_instance(
-            self.output), 'Output must be string: {}'.format(self.output)
+        assert recusrsive_check_instance(self.input),\
+            'Input must be string: {}'.format(self.input)
+        assert recusrsive_check_instance(self.output),\
+            'Output must be string: {}'.format(self.output)
 
         self.model = model
         self.args = args
@@ -47,9 +47,12 @@ class NetworkNode:
                 return var
             return get_field(getattr(var, fields[0]), fields[1:])
 
-        proc = get_field(self.model, fields[:-1])
+        if len(fields) == 0:
+            proc = self.model
+        else:
+            proc = get_field(self.model, fields[:-1])
 
-        if issubclass(type(self.model), ParamHolder):
+        if not issubclass(type(self.model), ParamHolder):
             if not hasattr(proc, 'stores'):
                 raise NotImplementedError(
                     'get_internal_param method is not fully implementation')
