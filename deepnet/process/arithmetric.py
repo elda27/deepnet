@@ -1,5 +1,5 @@
 from deepnet.core.registration import register_process
-from chainer.functions as F
+from chainer import functions as F
 
 operation_list = {
     '+': lambda x, y: x + y,
