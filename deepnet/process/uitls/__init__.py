@@ -1,4 +1,5 @@
 from deepnet.core.registration import register_process
+from deepnet.core.network.build import get_process
 from deepnet.core import config
 import chainer
 import numpy as np
@@ -29,7 +30,13 @@ def bias(x, multiply=1.0, bias_=1.0):
 
 
 @register_process()
-def get_latent_representation(*_, source, network='main_network'):
+def get_latent_representation(*_, source):
+    def get_field(var, fields):
+        if len(fields) == 0:
+            return var
+        return get_field(getattr(var, fields[0]), fields[1:])
+
     accessors = source.split('.')
-    network_manager = config.get_global_config(network)
-    return network_manager.get_node(accessors[0]).get_param(accessors[1:])
+    proc = get_field(get_process(accessors[0]), accessors[1:-1])
+
+    return proc.stores[accessors[-1]]
