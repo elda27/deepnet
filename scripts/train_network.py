@@ -40,6 +40,7 @@ def main():
 
     deepnet.core.config.set_global_config('gpu_id', args.gpu)
     deepnet.core.config.set_global_config('batch_size', args.batch_size)
+    deepnet.core.config.set_global_config('step_index', args.step_index)
 
     # Load configs
     dataset_config = deepnet.config.load(args.dataset_config)
@@ -71,6 +72,8 @@ def main():
         'param': param_dir
     }
 
+    deepnet.core.set_log_dirs(**log_dirs)
+
     os.makedirs(log_dir, exist_ok=True)
     os.makedirs(visualize_dir, exist_ok=True)
     os.makedirs(archive_dir, exist_ok=True)
@@ -99,7 +102,7 @@ def main():
     archive_nodes = network_config['config']['archive_nodes']
     optimizing_loss = network_config['config']['optimizing_loss']
     write_architecture_loss = (
-        os.path.join(log_dirs['archive'], 'model.png'), 
+        os.path.join(log_dirs['archive'], 'model.dot'), 
         network_config['config'].get('archive_loss')
     )
     # Setup optimizer
