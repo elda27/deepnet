@@ -167,11 +167,14 @@ class Trainer:
             pbar.close()
 
         for node_name in self.archive_nodes:
-            serializers.save_npz(
-                os.path.join(self.archive_dir, node_name +
-                             '_{:08d}.npz'.format(variables['__train_iteration__'])),
-                self.network.get_node(node_name).model
-            )
+            try:
+                serializers.save_npz(
+                    os.path.join(self.archive_dir, node_name +
+                                 '_{:08d}.npz'.format(variables['__train_iteration__'])),
+                    self.network.get_node(node_name).model
+                )
+            except KeyError:
+                raise KeyError('Failed to save npz file: ' + node_name)
 
         # Post processing
         self.postprocessor(variables, 'valid', False)
