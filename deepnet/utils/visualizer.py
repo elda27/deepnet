@@ -117,12 +117,14 @@ class ImageWriter(Visualizer):
                 raise AttributeError('Unknown image name: {}'.format(image_name))
             
             image = self.to_np(variables[image_name])
+            
             for i in range(image.shape[0]):
                 if image_name in self.images and (
                     len(self.images[image_name]) >= self.num_images and
                     self.num_images != -1
                     ):
                     break
+                
                 self.images.setdefault(image_name, []).append(np.copy(image[i]))
         return False
 
@@ -134,6 +136,8 @@ class ImageWriter(Visualizer):
                     __index__=i,
                     __name__=name,
                 )
+
+                image = np.squeeze(image)
                 spacing = self.get_spacing(image.ndim, i)
                 
                 if 'case_name' in self.variables:
