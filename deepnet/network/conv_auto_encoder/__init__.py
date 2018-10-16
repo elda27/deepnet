@@ -53,7 +53,7 @@ class Encoder(chainer.Chain):
         h = x
         for i in range(0, self.n_layers):
             h = self.layers['c{}1'.format(i)](h)
-            self.stores['c{}1'.format(i)] = h
+            #self.stores['c{}1'.format(i)] = h
             h = self.layers['c{}2'.format(i)](h)
             self.stores['c{}2'.format(i)] = h
         
@@ -142,6 +142,9 @@ class Decoder(chainer.Chain):
         return h
 
     def apply_next_add(self, h, name, connections = None, from_name = ''):
+        if connections is None:
+            return self.apply_next_default(h, name)
+        
         assert connections is not None
         assert from_name in connections
         from_h = connections[from_name]
@@ -161,6 +164,9 @@ class Decoder(chainer.Chain):
         return h
 
     def apply_next_concat(self, h, name, connections = None, from_name = ''):
+        if connections is None:
+            return self.apply_next_default(h, name)
+
         assert connections is not None
         assert from_name in connections
         from_h = connections[from_name]
