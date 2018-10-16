@@ -18,7 +18,8 @@ class NetworkManager:
         return self.process_list
 
     def get_node(self, name):
-        assert name in self.process_list
+        if name not in self.process_list:
+            raise KeyError()
         return self.process_list[name]
 
     def add_node(self, node):
@@ -32,7 +33,7 @@ class NetworkManager:
 
     def validate_network(self):
         unreached = []
-        for node in self.pointer.backward():
+        for node in self.pointer.forward():
             unreached.append(str(node))
         return list(reversed(unreached))
 
@@ -47,9 +48,9 @@ class NetworkManager:
                 continue
 
             if node.update_variable not in self.variables:
-                unreached = self.validate_network(node.update_variable)
+                unreached = self.validate_network()
                 raise ValueError(
-                    'Unreached loss computation.\nFollowing list is not reached nodes: \n' +
+                    'Unreached loss computation.\nFollowing list is unreached nodes: \n' +
                     '\n'.join([str(n) for n in unreached])
                 )
             updatables.append(node.update(self.variables))
@@ -61,7 +62,9 @@ class NetworkManager:
     def invoke(self, node):
         in_values = []
         for var in node.input:
-            assert var in self.variables, 'Unknown variable: ' + var
+            if var not in self.variables:
+                msg = 'Unknown variable: {} at {}'.format(var, str(node))
+                raise KeyError(msg)
             value = self.variables[var]
             if logger.isEnabledFor(DEBUG):
                 if hasattr(value, 'shape'):
