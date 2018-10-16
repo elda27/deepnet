@@ -6,11 +6,19 @@ _global_config = {
     'main_network': None,
 }
 
+
 def set_global_config(key, value):
     _global_config[key] = value
 
+
 def get_global_config(key):
     return _global_config[key]
+
+
+def set_log_dirs(**log_dirs):
+    for key, path in log_dirs.items():
+        _global_config['log.' + key] = path
+
 
 @contextmanager
 def bind_config(key, value):
