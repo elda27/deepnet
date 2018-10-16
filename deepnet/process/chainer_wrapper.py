@@ -4,6 +4,7 @@ from deepnet.core.registration import add_process
 add_process('chainer.mean', F.mean)
 add_process('chainer.sigmoid', F.sigmoid)
 add_process('chainer.softmax', F.softmax)
+add_process('chainer.argmax', F.argmax)
 add_process('chainer.transpose', F.transpose)
 add_process('chainer.expand_dims', F.expand_dims)
 add_process('chainer.sigmoid_cross_entropy', F.sigmoid_cross_entropy)
