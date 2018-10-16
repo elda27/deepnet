@@ -10,6 +10,7 @@ except ImportError:
     pass
 import chainer
 import chainer.functions as F
+from chainer.serializers import load_npz
 from chainer import cuda
 import datetime
 import glob
@@ -18,6 +19,7 @@ import os
 import os.path
 from functools import reduce
 from itertools import cycle
+from pathlib import Path
 import json
 import log_util
 from logging import getLogger
@@ -84,9 +86,13 @@ def main():
     network_manager, visualizers = deepnet.core.build_networks(network_config)
 
     # Initialize network
-
     for init_field in network_config.get('initialize', []):
         deepnet.core.initialize_networks(**init_field)
+
+    if args.restart:
+        model_filenames = get_latest_model(log_dirs['archive'])
+        for model_name, model_filename in model_filenames.items():
+            load_npz(model_filename, deepnet.core.get_process(model_name))
 
     # Setup post processor
     postprocessor = deepnet.utils.postprocess.PostProcessManager(network_config.get('postprocess', []))
@@ -208,6 +214,7 @@ def build_arguments():
 
     parser.add_argument('--freeze', type=str, default=[], nargs='*', help='Disable to update processes declared in network config.')
     parser.add_argument('--redirect', type=str, default=[], nargs='*', help='To redirect input variables.')
+    parser.add_argument('--restart', action='store_true', default=False, help='to restart the training and initialize model by the latest parameter.')
 
     parser.add_argument('--debug', action='store_true', default=False, help='If true, this session will start single process.')
 
@@ -284,6 +291,20 @@ def update_log_dir(network_config, log_dir):
     network_config['archive_dir'] = log_dir['archive']
     network_config['param_dir'] = log_dir['param']
     return network_config
+
+def get_latest_model(archive_dir):
+    max_iteration = 0
+    latest_models = {}
+    for archive_filename in Path(archive_dir).glob('*.npz'):
+        names = archive_filename.stem.split('_')
+        model_name = '_'.join(names[:-1])
+        iteration = int(names[-1])
+
+        if iteration >= max_iteration:
+            max_iteration = iteration
+            latest_models[model_name] = archive_filename
+
+    return latest_models
 
 if __name__ == '__main__':
     main()
