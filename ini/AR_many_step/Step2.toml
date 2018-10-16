@@ -24,7 +24,7 @@ logging_weights = [
 archive_loss = 'loss'
 archive_nodes = ['Segnet']
 optimizing_loss = ['loss']
-freezing_layer = [ 'Segnet.decoder1', 'Segnet.decoder2' ]
+freezing_layer = [ 'Segnet.decoder0', 'Segnet.decoder1' ]
 
 [hyper_parameter]
 n_encode_dim = 512
@@ -89,7 +89,7 @@ from_step = 1
 [[initialize]]
 mode = "share"
 from = "CAE.decoder"
-to = "Segnet.decoder1"
+to = "Segnet.decoder0"
 deepcopy = true
 
 [[initialize]]
@@ -100,7 +100,7 @@ from_step = 2
 [[initialize]]
 mode = "share"
 from = "CAE_label.decoder"
-to = "Segnet.decoder2"
+to = "Segnet.decoder1"
 deepcopy = true
 
 # Network declaration

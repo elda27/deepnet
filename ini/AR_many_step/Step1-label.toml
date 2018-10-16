@@ -98,6 +98,7 @@ output="gpu_reconstruct_label_probs"
 [[network]]
 input=[ "gpu_reconstruct_label_probs", "gpu_label" ]
 process="chainer.softmax_cross_entropy"
+ignore_label=1
 output="loss"
 
 [[network]]
@@ -115,7 +116,7 @@ axis=1
 [[visualize]]
 type  = "image_write"
 image_names = [ 
-  "volume", "gpu_label", "gpu_reconstruct_label", "gpu_reconstruct_label_probs"
+  "volume", "gpu_label", "gpu_reconstruct_label", "gpu_reconstruct_label_softmax_probs"
   ]
 output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__name__}_{__index__}.mhd'
 num_images = 3
