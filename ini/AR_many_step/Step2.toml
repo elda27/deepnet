@@ -42,7 +42,22 @@ type   = "network.cae"
 n_dim = 3
 n_task = 2
 in_channel = 1
-out_channel = [1, 4]
+out_channel = 1
+encode_dim = "${hyper_parameter.n_encode_dim}"
+dropout = "dropout"
+use_batch_norm = true
+n_layers = "${hyper_parameter.n_layers}"
+latent_activation = true # For sparse penalty
+
+[[process]]
+label  = "CAE_label"
+type   = "network.cae"
+
+# Arguments
+n_dim = 3
+n_task = 2
+in_channel = 1
+out_channel = 4
 encode_dim = "${hyper_parameter.n_encode_dim}"
 dropout = "dropout"
 use_batch_norm = true
@@ -54,7 +69,7 @@ label = "Segnet"
 type = "network.tl-net.segnet"
 update = "loss"
 
-decoder = [ "CAE.decoder1", "CAE.decoder2" ]
+decoder = [ "CAE.decoder", "CAE_label.decoder" ]
 
 n_dim = 2
 output_shape = [64, 64, 64]
@@ -73,13 +88,20 @@ from_step = 1
 
 [[initialize]]
 mode = "share"
-from = "CAE.decoder1"
+from = "CAE.decoder"
 to = "Segnet.decoder1"
+deepcopy = true
+
+[[initialize]]
+mode = "load"
+name = "CAE_label"
+from_step = 2
 
 [[initialize]]
 mode = "share"
-from = "CAE.decoder2"
+from = "CAE_label.decoder"
 to = "Segnet.decoder2"
+deepcopy = true
 
 # Network declaration
 [[network]]
@@ -102,7 +124,7 @@ output=["gpu_volume", "gpu_label"]
 input="gpu_rendering_image"
 process = "Segnet"
 label   = "Segnet"
-output  = ["gpu_reconstruct_volume", "gpu_reconstruct_probs"]
+output  = ["gpu_reconstruct_volume", "gpu_reconstruct_label_probs"]
 
 [[network]]
 input=[ "gpu_volume", "gpu_reconstruct_volume" ]
@@ -112,7 +134,7 @@ test=false
 
 
 [[network]]
-input=[ "gpu_reconstruct_probs", "gpu_label" ]
+input=[ "gpu_reconstruct_label_probs", "gpu_label" ]
 process="chainer.softmax_cross_entropy"
 output="loss_reconstruct_label"
 
@@ -122,9 +144,15 @@ process="multi_task_combine"
 output="loss"
 
 [[network]]
-input='gpu_reconstruct_probs'
+input='gpu_reconstruct_label_probs'
 process='chainer.softmax'
+output='gpu_reconstruct_label_softmax_probs'
+
+[[network]]
+input='gpu_reconstruct_label_softmax_probs'
+process='chainer.argmax'
 output='gpu_reconstruct_label'
+axis=1
 
 [[network]]
 input = ["gpu_reconstruct_volume", "gpu_volume"]
@@ -138,7 +166,7 @@ absolute = true
 [[visualize]]
 type  = "image_write"
 image_names = [ 
-  "volume", "diff_volume", "gpu_reconstruct_volume", "gpu_volume"
+  "volume", "diff_volume", "gpu_reconstruct_volume", "gpu_volume", "gpu_reconstruct_label", "gpu_label"
   ]
 spacing = "spacing"
 output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__case_name__}_{__name__}_{__index__}.mhd'

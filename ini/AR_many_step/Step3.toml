@@ -68,7 +68,7 @@ type   = "network.multi_task_loss"
 [[initialize]]
 mode = "load"
 name = "Segnet"
-from_step = 2
+from_step = 3
 
 # Network declaration
 [[network]]
