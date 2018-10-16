@@ -1,5 +1,4 @@
 from deepnet.core.registration import register_process
-from deepnet.core.network.build import get_process
 from deepnet.core import config
 import chainer
 import numpy as np
@@ -31,6 +30,8 @@ def bias(x, multiply=1.0, bias_=1.0):
 
 @register_process()
 def get_latent_representation(*_, source):
+    from deepnet.core.network.build import get_process
+
     def get_field(var, fields):
         if len(fields) == 0:
             return var
