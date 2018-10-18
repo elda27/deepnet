@@ -1,29 +1,30 @@
 import chainer
-from deepnet.network import utils, conv_auto_encoder
+from deepnet.network import utils
+from deepnet.network.conv_auto_encoder import scae as conv_auto_encoder
 import chainer.functions as F
 import chainer.links as L
 
 from deepnet.core.registration import register_network
 from corenet import declare_node_type
 
-from . import ssegnet
-
 
 @register_network(
-    'network.tl-net.segnet',
+    'network.tl-net.ssegnet',
     wrap_args={'decoder': 'network'}
 )
 @declare_node_type('chainer')
-class Segnet(chainer.Chain):
+class SSegnet(chainer.Chain):
     def __init__(self,
                  n_dim,
                  in_channel,
                  output_shape=None,
                  decoder=None,
-                 use_skipping_connection='none'
+                 use_skipping_connection=True
                  ):
         self.n_dim = n_dim
         self.output_shape = output_shape
+
+        self.stores = dict()
 
         super().__init__()
         self.decoders = []
@@ -38,21 +39,17 @@ class Segnet(chainer.Chain):
             else:
                 self.decoder = decoder
                 self.decoders.append(decoder)
-            self.encoder = conv_auto_encoder.Encoder(
-                n_dim, in_channel,
-                encode_dim=decoder.input_dim,
-                n_layers=decoder.n_layers,
-                n_res_layers=decoder.n_res_layers,
-                n_units=decoder.n_units,
-                dropout=decoder.dropout,
-                use_batch_norm=decoder.use_batch_norm
-            )
 
-        self.layers = dict(
-            decoder=self.decoder,
-            encoder=self.encoder
+        self.encoder = conv_auto_encoder.SEncoder(
+            n_dim, in_channel,
+            n_latent_elem=decoder.n_latent_elem,
+            n_layers=decoder.n_layers,
+            n_res_layers=decoder.n_res_layers,
+            n_units=decoder.n_units,
+            dropout=decoder.dropout,
+            use_batch_norm=decoder.use_batch_norm,
+            use_skip_connection=decoder.use_skip_connection
         )
-        self.stores = dict()
 
     def __call__(self, x):
         h = self.encoder(x)
@@ -69,8 +66,6 @@ class Segnet(chainer.Chain):
 
     def decode(self, decoder_name, x, h):
         decoder = getattr(self, decoder_name)
-        old_skip_flag = decoder.use_skipping_connection
-        decoder.use_skipping_connection = self.use_skipping_connection
 
         h = decoder(h, connections=self.encoder.stores)
 
@@ -83,5 +78,3 @@ class Segnet(chainer.Chain):
         h = utils.crop(h, output_shape, decoder.n_dim)
 
         self.stores[decoder_name] = h
-
-        decoder.use_skipping_connection = old_skip_flag

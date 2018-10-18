@@ -6,7 +6,9 @@ input = [
 
 logging = [
   '__train_iteration__', 
-  'train.loss', 'valid.loss'
+  'train.loss', 'valid.loss',
+  "train.loss_reconstruct_volume", "valid.loss_reconstruct_volume",
+  "train.loss_constrain_skip_connection", "valid.loss_constrain_skip_connection"
 ]
 
 archive_loss = 'loss'
@@ -23,19 +25,19 @@ weight_reconstruct = 1.0
 
 [[process]]
 label  = "CAE"
-type   = "network.cae"
+type   = "network.scae"
 update = "loss"
 
-# Arguments
 n_dim = 3
 in_channel = 1
 out_channel = 1
-encode_dim = "${hyper_parameter.n_encode_dim}"
+n_res_layers="${hyper_parameter.n_res_layers}"
+n_latent_elem = "${hyper_parameter.n_encode_dim}"
 dropout = "dropout"
-use_skipping_connection="concat"
+use_skip_connection=true
 use_batch_norm = true
 n_layers = "${hyper_parameter.n_layers}"
-latent_activation = false
+upsampler = "up"
 
 # Network declaration
 
@@ -69,7 +71,7 @@ output="gpu_reconstruct_volume"
 input = []
 output= "gpu_shallow_representation"
 process= "get_latent_representation"
-source = "CAE.encoder.c02"
+source = "CAE.encoder.c0_1"
 
 [[network]]
 input=[ "gpu_volume", "gpu_reconstruct_volume" ]
@@ -79,19 +81,14 @@ test=false
 
 [[network]]
 input=[ "gpu_volume", "gpu_shallow_representation" ]
-process="loss.euclidean_distance"
-output="diff_shallow_representation"
+process="loss.constrain_skip_connection"
+output="loss_constrain_skip_connection"
 test=false
 
 [[network]]
-input = "diff_shallow_representation"
-process = "penalty"
-output = "loss_shallow_representation"
-mode = "max"
-
-[[network]]
-input = ["loss_reconstruct_volume", "loss_shallow_representation"]
+input = ["loss_reconstruct_volume", "loss_constrain_skip_connection"]
 process = "reduce"
+weights = [1.0, 10.0]
 output = "loss"
 
 [[network]]

@@ -9,6 +9,8 @@ from functools import reduce
 from deepnet.core.registration import register_network
 from corenet import declare_node_type
 
+from . import scae
+
 @register_network('network.cae.encoder')
 @declare_node_type('chainer')
 class Encoder(chainer.Chain):
@@ -43,7 +45,7 @@ class Encoder(chainer.Chain):
         for i in range(n_res_layers):
             self.layers['res' + str(i)] = utils.ResBlock(n_dim, n_unit, n_unit, n_unit)
 
-        self.layers['c{}1'.format(n_layers)] = utils.CBR(n_dim, n_unit, 1, stride=3, bn=use_batch_norm, sample='down', activation=F.relu, dropout=dropout)
+        self.layers['c{}1'.format(n_layers)] = utils.CBR(n_dim, n_unit, 1, stride=1, bn=use_batch_norm, sample='down', activation=F.relu, dropout=dropout)
 
         self.layers['fc'] = L.Linear(None, out_size=encode_dim)
 

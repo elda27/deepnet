@@ -36,21 +36,22 @@ weight_latent_representation = 10.0
 
 [[process]]
 label  = "CAE"
-type   = "network.cae"
+type   = "network.scae"
 
 # Arguments
 n_dim = 3
-in_out_channel = 1
-encode_dim = "${hyper_parameter.n_encode_dim}"
-use_skipping_connection="concat"
+in_channel = 1
+out_channel = 1
+n_latent_elem = "${hyper_parameter.n_encode_dim}"
+use_skipping_connection = true
 dropout = "dropout"
 use_batch_norm = true
 n_layers = "${hyper_parameter.n_layers}"
-latent_activation = false # For sparse penalty
 
 [[process]]
 label = "Segnet"
-type = "network.tl-net.segnet"
+type = "network.tl-net.ssegnet"
+use_skipping_connection = true
 update = "loss"
 
 decoder = "CAE.decoder"
