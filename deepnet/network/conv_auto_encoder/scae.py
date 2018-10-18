@@ -144,6 +144,9 @@ class SDecoder(chainer.Chain):
         self.stores = {}
         self.combine_layers = []
 
+        upsample_ksize = 4 if self.upsampler == 'up' else 3
+        upsample_stride = 2 if self.upsampler == 'up' else 1
+
         n_units = self.n_channel
         n_last_units = self.n_units
         for i in range(self.n_layers):
@@ -177,7 +180,8 @@ class SDecoder(chainer.Chain):
 
             self.layers['d{}'.format(i)] = utils.CBR(
                 n_dim, n_units, n_units,
-                ksize=4, stride=2, bn=use_batch_norm, sample=self.upsampler,
+                ksize=upsample_ksize, stride=upsample_stride,
+                bn=use_batch_norm, sample=self.upsampler,
                 activation=F.relu, dropout=dropout,
             )
 
@@ -192,7 +196,8 @@ class SDecoder(chainer.Chain):
         self.flatten_units = n_units
         self.layers['reconstruct'] = utils.CBR(
             n_dim, 1, n_units,
-            ksize=4, stride=2, bn=use_batch_norm, sample=self.upsampler,
+            ksize=upsample_ksize, stride=upsample_stride,
+            bn=use_batch_norm, sample=self.upsampler,
             activation=F.relu, dropout=dropout
         )
 
