@@ -22,6 +22,7 @@ gaussian_sigma = 20
 n_res_layers = 4
 
 weight_reconstruct = 1.0
+upsample="up"
 
 [[process]]
 label  = "CAE"
@@ -37,7 +38,7 @@ dropout = "dropout"
 use_skip_connection=true
 use_batch_norm = true
 n_layers = "${hyper_parameter.n_layers}"
-upsampler = "up"
+upsampler = "${hyper_parameter.upsample}"
 
 # Network declaration
 
