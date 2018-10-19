@@ -1,6 +1,8 @@
 from deepnet.core.registration import register_process
 import chainer
 import chainer.functions as F
+import numpy as np
+import functools
 
 
 @register_process('loss.gradient_correlation')
