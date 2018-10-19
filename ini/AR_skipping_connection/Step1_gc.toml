@@ -1,0 +1,117 @@
+
+[config]
+input = [
+  "volume"
+]
+
+logging = [
+  '__train_iteration__', 
+  'train.loss', 'valid.loss',
+  "train.loss_reconstruct_volume", "valid.loss_reconstruct_volume",
+  "train.loss_gc", "valid.loss_gc",
+  "train.loss_constrain_skip_connection", "valid.loss_constrain_skip_connection"
+]
+
+archive_loss = 'loss'
+archive_nodes = ['CAE']
+optimizing_loss = ['loss']
+
+[hyper_parameter]
+n_encode_dim = 512
+n_layers = 3
+gaussian_sigma = 20
+n_res_layers = 4
+
+weight_reconstruct = 1.0
+upsample="up"
+
+[[process]]
+label  = "CAE"
+type   = "network.scae"
+update = "loss"
+
+n_dim = 3
+in_channel = 1
+out_channel = 1
+n_res_layers="${hyper_parameter.n_res_layers}"
+n_latent_elem = "${hyper_parameter.n_encode_dim}"
+dropout = "dropout"
+use_skip_connection=true
+use_batch_norm = true
+n_layers = "${hyper_parameter.n_layers}"
+upsampler = "${hyper_parameter.upsample}"
+
+# Network declaration
+
+[[network]]
+input="volume"
+process="expand_dims"
+output="volume_expanded"
+axis=1
+
+[[network]]
+input=["volume_expanded"]
+process="to_gpu"
+output=["gpu_volume"]
+
+## Apply gaussian noise
+[[network]]
+input = "gpu_volume"
+process = "apply_gaussian_noise"
+output = "gpu_noisy_volume"
+
+sigma = "${hyper_parameter.gaussian_sigma}"
+
+## Reconstruct label
+[[network]]
+input="gpu_noisy_volume"
+label="CAE"
+process="CAE"
+output="gpu_reconstruct_volume"
+
+[[network]]
+input = []
+output= "gpu_shallow_representation"
+process= "get_latent_representation"
+source = "CAE.encoder.c0_1"
+
+[[network]]
+input=[ "gpu_volume", "gpu_reconstruct_volume" ]
+process="loss.euclidean_distance"
+output="loss_reconstruct_volume"
+test=false
+
+[[network]]
+input=[ "gpu_volume", "gpu_reconstruct_volume" ]
+process="loss.gradient_correlation"
+output="loss_gc"
+test=false
+
+[[network]]
+input=[ "gpu_volume", "gpu_shallow_representation" ]
+process="loss.constrain_skip_connection"
+output="loss_constrain_skip_connection"
+test=false
+
+[[network]]
+input = ["loss_reconstruct_volume", "loss_gc", "loss_constrain_skip_connection"]
+process = "reduce"
+weights = [1.0, 100.0, 10.0]
+output = "loss"
+
+[[network]]
+input = ["gpu_reconstruct_volume", "gpu_volume"]
+process= "diff_image"
+output = "diff_volume"
+train = false
+test = false
+absolute = true
+
+# Visualize declaration
+[[visualize]]
+type  = "image_write"
+image_names = [ 
+  "volume", "diff_volume", "gpu_reconstruct_volume", "gpu_volume" ,
+  ]
+output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__name__}_{__index__}.mhd'
+num_images = 3
