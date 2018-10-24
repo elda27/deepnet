@@ -22,6 +22,6 @@ def constrain_skip_connection(x, t, normalize=False):
         d = sum(ds)
 
     xp = cuda.get_array_module(d)
-    d = F.minimum(d, xp.array([1e-8]))
+    d = F.minimum(d, xp.array([1e-8], dtype=xp.float32))
 
     return 1.0 / d
