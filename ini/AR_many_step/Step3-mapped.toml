@@ -57,7 +57,7 @@ type   = "network.cae"
 n_dim = 3
 n_task = 2
 in_channel = 1
-out_channel = 4
+out_channel = 3
 encode_dim = "${hyper_parameter.n_encode_dim}"
 dropout = "dropout"
 use_batch_norm = true
@@ -118,7 +118,19 @@ output = "volume_expanded"
 [[network]]
 input=["volume_expanded", "label"]
 process="to_gpu"
-output=["gpu_volume", "gpu_label"]
+output=["gpu_volume", "gpu_base_label"]
+
+[[network]]
+input="gpu_base_label"
+process="map_label"
+output="gpu_f_label"
+index_map = { 3=2 }
+
+[[network]]
+input="gpu_f_label"
+process="cast_type"
+dtype='int32'
+output="gpu_label"
 
 [[network]]
 input="gpu_rendering_image"

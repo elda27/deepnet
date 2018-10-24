@@ -54,7 +54,7 @@ update = "loss"
 
 n_dim = 3
 in_channel = 1
-out_channel = 4
+out_channel = 3
 encode_dim = "${hyper_parameter.n_encode_dim}"
 dropout = "dropout"
 use_batch_norm = true
@@ -72,7 +72,13 @@ axis=1
 [[network]]
 input=["volume_expanded", "label"]
 process="to_gpu"
-output=["gpu_volume",  "gpu_f_label"]
+output=["gpu_volume", "gpu_base_label"]
+
+[[network]]
+input="gpu_base_label"
+process="map_label"
+output="gpu_f_label"
+index_map = { 3=2 }
 
 [[network]]
 input="gpu_f_label"
@@ -98,7 +104,8 @@ output="gpu_reconstruct_label_probs"
 [[network]]
 input=[ "gpu_reconstruct_label_probs", "gpu_label" ]
 process="chainer.softmax_cross_entropy"
-ignore_label=1
+ignore_label=0
+normalize=false
 output="loss"
 
 [[network]]

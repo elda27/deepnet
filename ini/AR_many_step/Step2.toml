@@ -2,84 +2,18 @@
 [config]
 input = [
   "volume",
-  "spacing",
-  "label",
-  "projections",
-  "projections_spacing"
+  "label"
 ]
 
 logging = [
   '__train_iteration__', 
-  'train.loss_reconstruct_volume', 'valid.loss_reconstruct_volume',
-  'train.loss_reconstruct_label', 'valid.loss_reconstruct_label',
   'train.loss', 'valid.loss'
-]
-logging_weights = [
-  "", 
-  "multi_task_combine.sigma_0", "multi_task_combine.sigma_0", 
-  "multi_task_combine.sigma_1", "multi_task_combine.sigma_1", 
-  "", ""
 ]
 
 archive_loss = 'loss'
-archive_nodes = ['Segnet']
+archive_nodes = ['CAE_label']
 optimizing_loss = ['loss']
-freezing_layer = [ 'Segnet.decoder0', 'Segnet.decoder1' ]
-
-[hyper_parameter]
-n_encode_dim = 512
-n_layers = 3
-gaussian_sigma = 20
-n_res_layers = 4
-
-weight_reconstruct = 1.0
-
-[[process]]
-label  = "CAE"
-type   = "network.cae"
-
-# Arguments
-n_dim = 3
-n_task = 2
-in_channel = 1
-out_channel = 1
-encode_dim = "${hyper_parameter.n_encode_dim}"
-dropout = "dropout"
-use_batch_norm = true
-n_layers = "${hyper_parameter.n_layers}"
-latent_activation = true # For sparse penalty
-
-[[process]]
-label  = "CAE_label"
-type   = "network.cae"
-
-# Arguments
-n_dim = 3
-n_task = 2
-in_channel = 1
-out_channel = 4
-encode_dim = "${hyper_parameter.n_encode_dim}"
-dropout = "dropout"
-use_batch_norm = true
-n_layers = "${hyper_parameter.n_layers}"
-latent_activation = true # For sparse penalty
-
-[[process]]
-label = "Segnet"
-type = "network.tl-net.segnet"
-update = "loss"
-
-decoder = [ "CAE.decoder", "CAE_label.decoder" ]
-
-n_dim = 2
-output_shape = [64, 64, 64]
-
-in_channel = 2
-
-[[process]]
-label="multi_task_combine"
-loss_types=["euclidean", "softmax_cross_entropy"]
-type   = "network.multi_task_loss"
+freezing_layer = [ 'CAE_label.encoder' ]
 
 [[initialize]]
 mode = "load"
@@ -88,96 +22,102 @@ from_step = 1
 
 [[initialize]]
 mode = "share"
-from = "CAE.decoder"
-to = "Segnet.decoder0"
-deepcopy = true
+from = "CAE.encoder"
+to = "CAE_label.encoder"
 
-[[initialize]]
-mode = "load"
-name = "CAE_label"
-from_step = 2
+[hyper_parameter]
+n_encode_dim = 512
+n_layers = 3
+gaussian_sigma = 20
+n_res_layers = 4
 
-[[initialize]]
-mode = "share"
-from = "CAE_label.decoder"
-to = "Segnet.decoder1"
-deepcopy = true
+# CAE for volume reconstruction
+[[process]]
+label  = "CAE"
+type   = "network.cae"
+update = "loss"
+
+n_dim = 3
+in_channel = 1
+out_channel = 1
+encode_dim = "${hyper_parameter.n_encode_dim}"
+dropout = "dropout"
+use_batch_norm = true
+n_layers = "${hyper_parameter.n_layers}"
+latent_activation = false
+
+# CAE for label segmentation
+[[process]]
+label  = "CAE_label"
+type   = "network.cae"
+update = "loss"
+
+n_dim = 3
+in_channel = 1
+out_channel = 4
+encode_dim = "${hyper_parameter.n_encode_dim}"
+dropout = "dropout"
+use_batch_norm = true
+n_layers = "${hyper_parameter.n_layers}"
+latent_activation = false
 
 # Network declaration
-[[network]]
-input = "projections"
-process = "to_gpu"
-output = "gpu_rendering_image"
 
 [[network]]
-input = "volume"
-process = "expand_dims"
-axis = 1
-output = "volume_expanded"
+input="volume"
+process="expand_dims"
+output="volume_expanded"
+axis=1
 
 [[network]]
 input=["volume_expanded", "label"]
 process="to_gpu"
-output=["gpu_volume", "gpu_label"]
+output=["gpu_volume",  "gpu_f_label"]
 
 [[network]]
-input="gpu_rendering_image"
-process = "Segnet"
-label   = "Segnet"
-output  = ["gpu_reconstruct_volume", "gpu_reconstruct_label_probs"]
+input="gpu_f_label"
+process="cast_type"
+dtype='int32'
+output="gpu_label"
 
+## Apply gaussian noise
 [[network]]
-input=[ "gpu_volume", "gpu_reconstruct_volume" ]
-process="loss.euclidean_distance"
-output ="loss_euclidean"
-test=false
+input = "gpu_volume"
+process = "apply_gaussian_noise"
+output = "gpu_noisy_volume"
 
+sigma = "${hyper_parameter.gaussian_sigma}"
+
+## Reconstruct label
+[[network]]
+input="gpu_noisy_volume"
+label="CAE_label"
+process="CAE_label"
+output="gpu_reconstruct_label_probs"
 
 [[network]]
 input=[ "gpu_reconstruct_label_probs", "gpu_label" ]
 process="chainer.softmax_cross_entropy"
-output="loss_reconstruct_label"
-
-[[network]]
-input=["loss_reconstruct_volume", "loss_reconstruct_label"]
-process="multi_task_combine"
+ignore_label=0
+normalize=false
 output="loss"
 
 [[network]]
-input='gpu_reconstruct_label_probs'
-process='chainer.softmax'
-output='gpu_reconstruct_label_softmax_probs'
+input="gpu_reconstruct_label_probs"
+process="chainer.softmax"
+output="gpu_reconstruct_label_softmax_probs"
 
 [[network]]
-input='gpu_reconstruct_label_softmax_probs'
-process='chainer.argmax'
-output='gpu_reconstruct_label'
+input="gpu_reconstruct_label_softmax_probs"
+process="chainer.argmax"
+output="gpu_reconstruct_label"
 axis=1
-
-[[network]]
-input = ["gpu_reconstruct_volume", "gpu_volume"]
-process= "diff_image"
-output = "diff_volume"
-train = false
-test = false
-absolute = true
 
 # Visualize declaration
 [[visualize]]
 type  = "image_write"
 image_names = [ 
-  "volume", "diff_volume", "gpu_reconstruct_volume", "gpu_volume", "gpu_reconstruct_label", "gpu_label"
+  "volume", "gpu_label", "gpu_reconstruct_label", "gpu_reconstruct_label_softmax_probs"
   ]
-spacing = "spacing"
-output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__case_name__}_{__name__}_{__index__}.mhd'
+output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__name__}_{__index__}.mhd'
 num_images = 3
-
-[[visualize]]
-type  = "image_write"
-image_names = [ 
-  "gpu_rendering_image"
-  ]
-spacing = "projections_spacing"
-output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__case_name__}_{__name__}_{__index__}.mhd'
-num_images = 3
-

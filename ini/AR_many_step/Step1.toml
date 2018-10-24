@@ -1,0 +1,86 @@
+
+[config]
+input = [
+  "volume"
+]
+
+logging = [
+  '__train_iteration__', 
+  'train.loss', 'valid.loss'
+]
+
+archive_loss = 'loss'
+archive_nodes = ['CAE']
+optimizing_loss = ['loss']
+
+[hyper_parameter]
+n_encode_dim = 512
+n_layers = 3
+gaussian_sigma = 20
+n_res_layers = 4
+
+[[process]]
+label  = "CAE"
+type   = "network.cae"
+update = "loss"
+
+# Arguments
+n_dim = 3
+in_channel = 1
+out_channel = 1
+encode_dim = "${hyper_parameter.n_encode_dim}"
+dropout = "dropout"
+use_batch_norm = true
+n_layers = "${hyper_parameter.n_layers}"
+latent_activation = false
+
+# Network declaration
+
+[[network]]
+input="volume"
+process="expand_dims"
+output="volume_expanded"
+axis=1
+
+[[network]]
+input=["volume_expanded"]
+process="to_gpu"
+output=["gpu_volume"]
+
+## Apply gaussian noise
+[[network]]
+input = "gpu_volume"
+process = "apply_gaussian_noise"
+output = "gpu_noisy_volume"
+
+sigma = "${hyper_parameter.gaussian_sigma}"
+
+## Reconstruct label
+[[network]]
+input="gpu_noisy_volume"
+label="CAE"
+process="CAE"
+output="gpu_reconstruct_volume"
+
+[[network]]
+input=[ "gpu_volume", "gpu_reconstruct_volume" ]
+process="loss.euclidean_distance"
+output="loss"
+test=false
+
+[[network]]
+input = ["gpu_reconstruct_volume", "gpu_volume"]
+process= "diff_image"
+output = "diff_volume"
+train = false
+test = false
+absolute = true
+
+# Visualize declaration
+[[visualize]]
+type  = "image_write"
+image_names = [ 
+  "volume", "diff_volume", "gpu_reconstruct_volume", "gpu_volume" ,
+  ]
+output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__name__}_{__index__}.mhd'
+num_images = 3
