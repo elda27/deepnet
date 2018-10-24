@@ -19,4 +19,7 @@ def constrain_skip_connection(x, t, normalize=False):
                 F.expand_dims(t[:, i, ...], axis=1),
                 normalize=normalize))
         d = sum(ds)
+
+    d = F.min(d, 1e-8)
+
     return 1.0 / d
