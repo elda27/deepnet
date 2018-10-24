@@ -20,6 +20,6 @@ def constrain_skip_connection(x, t, normalize=False):
                 normalize=normalize))
         d = sum(ds)
 
-    d = F.min(d, 1e-8)
+    d = F.minimum(d, 1e-8)
 
     return 1.0 / d
