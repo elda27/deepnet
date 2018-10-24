@@ -1,44 +1,65 @@
 from deepnet.core.registration import register_process
 from matplotlib.pyplot import get_cmap
 
+import chainer
+from chainer.backends import cuda
+
+
+@register_process()
+def map_label(*input, index_map={}):
+    assert len(index_map) != 0
+    outputs = []
+    for image in input:
+        xp = cuda.get_array_module(image)
+        output = xp.zeros_like(image)
+        for pairs in index_map.items():
+            source, dest = map(int, pairs)
+            mask = image == source
+            output[mask] = dest
+        outputs.append(chainer.Variable(output))
+    return outputs
+
+
 @register_process()
 def make_overlap_label(*images):
     cmap = get_cmap(color)
     result_image = []
     for image in images:
         img = utils.unwrapped(image)
-        
+
         index_img = np.argmax(
-            np.concatenate((np.ones( (img.shape[0], 1) + img.shape[2:], dtype=img.dtype) * 1e-1, img), axis=1), 
+            np.concatenate(
+                (np.ones((img.shape[0], 1) + img.shape[2:], dtype=img.dtype) * 1e-1, img), axis=1),
             axis=1
-            )
+        )
         result_image.append(map_index_label(index_img))
     return result_image
+
 
 @register_process()
 def map_index_label(label):
     """Mapping color to index image
-    
+
     Args:
         label (images): Input images aligned by (N, 1, S, ...) or 
                         (N, S, ...) (N means N sample so it is same as batch size, 
                         S mean shape of image).
         color (list, optional): color of input images, Defaults to colors.
-    
+
     Returns:
         numpy.ndarray: color images (N, 3, S, ...), S is same as input image.
     """
 
     color = 'tab10'
-    fold  = 10
+    fold = 10
 
     indices = list(np.unique(label))
     indices.remove(0)
     color_image = np.tile(
         np.expand_dims(
-            np.zeros_like(label), 
+            np.zeros_like(label),
             axis=label.ndim
-            ), 
+        ),
         (1,) * label.ndim + (3,)
     )
 
@@ -50,12 +71,12 @@ def map_index_label(label):
         b = np.expand_dims(mask * color[2] * 255, axis=mask.ndim)
         color_mask = np.tile(
             np.expand_dims(
-                np.logical_not(mask), 
+                np.logical_not(mask),
                 axis=mask.ndim
-                ), 
+            ),
             (1,) * mask.ndim + (3,)
         )
-        color_image = color_image * color_mask * np.concatenate((r, g, b), axis=mask.ndim)
-    
-    return np.transpose(color_image, (1, 0, 2, 3))
+        color_image = color_image * color_mask * \
+            np.concatenate((r, g, b), axis=mask.ndim)
 
+    return np.transpose(color_image, (1, 0, 2, 3))
