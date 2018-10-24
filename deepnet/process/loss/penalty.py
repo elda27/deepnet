@@ -1,6 +1,7 @@
 from deepnet.core.registration import register_process
 import chainer
 import chainer.functions as F
+from chainer.backends import cuda
 import numpy as np
 import functools
 
@@ -20,6 +21,7 @@ def constrain_skip_connection(x, t, normalize=False):
                 normalize=normalize))
         d = sum(ds)
 
-    d = F.minimum(d, 1e-8)
+    xp = cuda.get_array_module(d)
+    d = F.minimum(d, xp.array([1e-8]))
 
     return 1.0 / d
