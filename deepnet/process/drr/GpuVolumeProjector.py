@@ -10,19 +10,20 @@ import pycuda.driver
 import deepnet.utils
 from deepnet.core import config
 
-pycuda_device  = None
+pycuda_device = None
 pycuda_context = None
+
 
 class GpuVolumeProjector:
     def __init__(self,
-        reverse_spacing = True,
-        SOD = 1800,
-        SDD = 2000,
-        pixel_spacing = (0.32, 0.32),
-        image_size = (512, 512),
-        n_const_pose = None,
-        gpu_id = 1,
-        ):
+                 reverse_spacing=True,
+                 SOD=1800,
+                 SDD=2000,
+                 pixel_spacing=(0.32, 0.32),
+                 image_size=(512, 512),
+                 n_const_pose=None,
+                 gpu_id=1,
+                 ):
         self.cache = {}
         self.image_size = image_size
         self.pixel_spacing = pixel_spacing
@@ -46,11 +47,11 @@ class GpuVolumeProjector:
             pydrr.initialize()
 
     def __call__(
-            self,
-            myu_volume, spacing,
-            case_name = None,
-            pose=[],
-        ):
+        self,
+        myu_volume, spacing,
+        case_name=None,
+        pose=[],
+    ):
         cupy_device = chainer.cuda.get_device_from_array(myu_volume)
 
         if self.reverse_spacing:
@@ -81,7 +82,7 @@ class GpuVolumeProjector:
             volume,
             self.geometry_context,
             T_Nx4x4
-            )
+        )
 
         image = d_image.get()
         pycuda_context.pop()
@@ -95,5 +96,5 @@ class GpuVolumeProjector:
         self.detector = pydrr.Detector(
             pydrr.Detector.make_detector_size(self.image_size, n_channels),
             self.pixel_spacing
-            )
+        )
         self.projector = pydrr.Projector(self.detector, 1.0).to_gpu()
