@@ -11,11 +11,11 @@ def map_label(*input, index_map={}):
     outputs = []
     for image in input:
         xp = cuda.get_array_module(image)
-        output = xp.zeros_like(image)
+        output = xp.copy(image)
         for pairs in index_map.items():
             source, dest = map(int, pairs)
             mask = image.data == source
-            output.data[mask] = dest
+            output[mask] = dest
         outputs.append(chainer.Variable(output.data))
     return outputs
 
