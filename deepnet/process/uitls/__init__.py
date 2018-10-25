@@ -1,6 +1,7 @@
 from deepnet.core.registration import register_process
 from deepnet.core import config
 import chainer
+from chainer import functions as F
 import numpy as np
 import cupy as cp
 
@@ -12,6 +13,12 @@ def expand_dims(*input, axis=1):
         xp = chainer.cuda.get_array_module(i)
         output.append(xp.expand_dims(i, axis=axis))
     return output
+
+
+@register_process()
+def batch_reshape(x, shape):
+    shape = map(int, shape)
+    return F.reshape(x, (x.shape[0],) + shape)
 
 
 @register_process()
