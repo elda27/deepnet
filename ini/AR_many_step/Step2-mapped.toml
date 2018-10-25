@@ -104,8 +104,6 @@ output="gpu_reconstruct_label_probs"
 [[network]]
 input=[ "gpu_reconstruct_label_probs", "gpu_label" ]
 process="chainer.softmax_cross_entropy"
-ignore_label=0
-normalize=false
 output="loss"
 
 [[network]]
