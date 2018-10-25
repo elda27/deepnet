@@ -11,7 +11,7 @@ def map_label(*input, index_map={}):
     outputs = []
     for image in input:
         xp = cuda.get_array_module(image)
-        output = xp.copy(image)
+        output = xp.copy(image.data)
         for pairs in index_map.items():
             source, dest = map(int, pairs)
             mask = image.data == source
