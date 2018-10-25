@@ -35,7 +35,6 @@ n_res_layers = 4
 [[process]]
 label  = "CAE"
 type   = "network.cae"
-update = "loss"
 
 n_dim = 3
 in_channel = 1

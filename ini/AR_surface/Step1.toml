@@ -1,0 +1,87 @@
+
+[config]
+input = [
+  "vertices", "faces"
+]
+
+logging = [
+  '__train_iteration__', 
+  'train.loss', 'valid.loss'
+]
+
+archive_loss = 'loss'
+archive_nodes = ['AE']
+optimizing_loss = ['loss']
+
+[hyper_parameter]
+n_encode_dim = 512
+n_layers = 16
+gaussian_sigma = 20
+n_points = 5001
+
+[[process]]
+label  = "AE"
+type   = "network.ae"
+update = "loss"
+
+# Arguments
+encode_dim = "${hyper_parameter.n_encode_dim}"
+output_dim=15003
+dropout = "dropout"
+use_batch_norm = true
+n_layers = "${hyper_parameter.n_layers}"
+
+# Network declaration
+[[network]]
+input=["vertices"]
+process="to_gpu"
+output=["gpu_vertices"]
+
+## Apply gaussian noise
+[[network]]
+input = "gpu_vertices"
+process = "apply_gaussian_noise"
+output = "gpu_noisy_vertices"
+
+sigma = "${hyper_parameter.gaussian_sigma}"
+
+## Reconstruct label
+[[network]]
+input="gpu_vertices"
+process="batch_reshape"
+output="gpu_flatten_vertices"
+shape=[-1]
+
+[[network]]
+input="gpu_flatten_vertices"
+label="AE"
+process="AE"
+output="gpu_reconstruct_vertices"
+
+[[network]]
+input=[ "gpu_vertices", "gpu_reconstruct_vertices" ]
+process="loss.euclidean_distance"
+output="loss"
+test=false
+
+[[network]]
+input="gpu_reconstruct_vertices"
+process="batch_reshape"
+output="gpu_reconstruct_vertices_reformed"
+shape=["${n_points}", "-1"]
+
+
+# Visualize declaration
+[[visualize]]
+type  = "ply_write"
+names = [
+  "truth", "reconstruct"
+]
+vertices_names = [ 
+  "gpu_vertices", "gpu_reconstruct_vertices_reformed" ,
+]
+faces_names= [
+  "faces", "faces"
+]
+output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__name__}_{__index__}.mhd'
+num_surfaces = 3
