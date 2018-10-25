@@ -11,6 +11,7 @@ except ImportError:
 import pandas as pd
 #import matplotlib.pyplot as plt
 import imageio
+import vtk
 import cv2
 import warnings
 import math
@@ -165,6 +166,90 @@ class ImageWriter(Visualizer):
     def get_figure(self):
         return self.images
 
+@register_visualizer('ply_write')
+class PolyWrite(Visualizer):
+    def __init__(self,
+        output_filename, names, vertices_names, faces_names,
+        num_surfaces=3, supress_exception = False, 
+        ):
+        self.num_surfaces = num_surfaces
+        
+        self.names = names
+        self.vertices_names = vertices_names
+        self.faces_names = faces_names
+
+        self.supress_exception = supress_exception
+        super().__init__(output_filename)
+
+    def get_figure(self):
+        return self.polys
+
+    def render(self, variables):
+        iteration = variables['__iteration__']
+        if iteration >= self.num_images and self.num_images >= 0:
+            return True
+        elif iteration == 0:
+            iteration = 0
+            self.polys = dict()
+        
+        for name, verticies_name, faces_name in zip(self.names, self.vertices_names, self.faces_names):
+            batch_verts = self.variables[verticies_name][i]
+            batch_faces = self.variables[faces_name]
+            for i in range(batch_verts.shape[0]):
+                verts = batch_verts[i]
+                faces = batch_faces[i]
+                polydata = convert_poly_numpy_to_vtk((verts, faces))
+                self.polys.setdefault(name, []).append(polydata)
+                
+        return False
+
+    def save(self):
+        polys = self.get_figure()
+        for name, surfaces in polys.items():
+            for i, surface in enumerate(surfaces):
+                preset = dict(
+                    __index__=i,
+                    __name__=name,
+                )
+
+                writer = vtk.vtkPLYWriter()
+                writer.SetInput(surface)
+                writer.SetFileName(self.output_filename.format(**self.variables, **preset))
+                writer.Update()
+        self.polys.clear()
+
+
+    def convert_poly_numpy_to_vtk(poly):
+        vertices, faces = poly
+        if not isinstance(faces, vtk.vtkPoints):
+            vtkArray = numpy_to_vtk(vertices, deep=1)
+            points = vtk.vtkPoints()
+            points.SetData(vtkArray)
+        else:
+            points = vertices
+
+        if not isinstance(faces, vtk.vtkCellArray):
+            triangles = vtk.vtkCellArray()
+
+            for i in range(len(faces)):
+                triangle = vtk.vtkTriangle()
+
+                triangle.GetPointIds().SetId(0, faces[i, 0])
+                triangle.GetPointIds().SetId(1, faces[i, 1])
+                triangle.GetPointIds().SetId(2, faces[i, 2])
+
+                triangles.InsertNextCell(triangle)
+        else:
+            triangles = faces
+
+        # create a polydata object
+        poldata = vtk.vtkPolyData()
+
+        # add the geometry and topology to the polydata
+        poldata.SetPoints(points)
+        poldata.SetPolys(triangles)
+
+        return poldata
 #@utils.deprecated()
 @register_visualizer('mhd_write')
 class MhdImageWriter(Visualizer):
