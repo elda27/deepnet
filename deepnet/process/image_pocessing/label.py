@@ -16,7 +16,7 @@ def map_label(*input, index_map={}):
             source, dest = map(int, pairs)
             mask = image.data == source
             output[mask] = dest
-        outputs.append(chainer.Variable(output.data))
+        outputs.append(chainer.Variable(output))
     return outputs
 
 
