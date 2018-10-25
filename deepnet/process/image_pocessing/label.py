@@ -14,14 +14,14 @@ def map_label(*input, index_map={}):
         output = xp.zeros_like(image)
         for pairs in index_map.items():
             source, dest = map(int, pairs)
-            mask = image == source
-            output[mask] = dest
-        outputs.append(chainer.Variable(output))
+            mask = image.data == source
+            output.data[mask] = dest
+        outputs.append(chainer.Variable(output.data))
     return outputs
 
 
 @register_process()
-def make_overlap_label(*images):
+def make_overlap_label(*images, color='tab10'):
     cmap = get_cmap(color)
     result_image = []
     for image in images:
