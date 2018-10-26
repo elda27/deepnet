@@ -31,6 +31,6 @@ def gradient_correlation(x, t, normalize=True, absolute=False):
         t_norm_grad = t_grad - t_grad_mean
 
         gc.append(1.0 - F.sum(x_norm_grad * t_norm_grad) /
-                  (F.sqrt(F.sum(x_norm_grad ** 2)) * F.sqrt(F.sum(t_norm_grad ** 2))))
+                  (F.sqrt(F.sum(x_norm_grad ** 2)) * F.sqrt(F.sum(t_norm_grad ** 2)) + 1e-8))
 
     return F.absolute(sum(gc) / len(gc))
