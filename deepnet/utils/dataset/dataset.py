@@ -6,11 +6,8 @@ import warnings
 import imageio
 import numpy as np
 import abc
-try:
-    from plyfile import PlyData
-    ENABLE_POLY_SUPPORT=True
-except:
-    ENABLE_POLY_SUPPORT=False
+import vtk
+from vtk.util.numpy_support import vtk_to_numpy
 from logging import getLogger
 
 logger = getLogger(__name__)
@@ -277,14 +274,21 @@ def load_image(filename):
         return np.transpose(img.astype(np.float32), (2, 1, 0))
     raise NotImplementedError('Not implemented extension: (File: {}, Ext: {})'.format(filename, ext))
 
-
 @register_input_method('surface')
 def load_surface(filename):
     _, ext = os.path.splitext( os.path.basename(filename) )
 
-    if ext in ('.ply') and ENABLE_POLY_SUPPORT:
-        data = PlyData.read(filename)
-        return data['vertex']
+    if ext in ('.ply'):
+        reader = vtk.vtkPLYReader()
+        reader.SetFileName(filename)
+        reader.Update()
+        poly = reader.GetOutput()
+        
+        vertices = vtk_to_numpy(poly.GetPoints().GetData())
+        faces = vtk_to_numpy(poly.GetPolys().GetData())
+        faces = faces.reshape(-1, 4)[:, 1:]
+
+        return vertices, faces
     elif ext in ('.npy'):
         data = np.load(filename)
         return data
