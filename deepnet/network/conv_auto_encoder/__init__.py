@@ -248,7 +248,7 @@ class ConvolutionalAutoEncoder(chainer.Chain):
                     use_skipping_connection=use_skipping_connection
                     ))
                 self.decoders.append(getattr(self, 'decoder{}'.format(i)))
-
+        self.decoder = self.decoders[0]
         self.layers['encoder'] = self.encoder
         for i, decoder in enumerate(self.decoders):
             self.layers['decoder{}'.format(i)] = decoder
