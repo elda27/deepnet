@@ -59,7 +59,7 @@ class Segnet(chainer.Chain):
         self.stores['encoder'] = h
 
         if hasattr(self, 'decoder'):
-            return self.decode('decode', x, h)
+            return self.decode('decoder', x, h)
         else:
             decode_results = []
             for decoder_name in self.decoders:
