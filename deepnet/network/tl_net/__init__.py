@@ -80,3 +80,4 @@ class Segnet(chainer.Chain):
         h = utils.crop(h, output_shape, decoder.n_dim)
 
         self.stores[decoder_name] = h
+        return h
