@@ -69,9 +69,6 @@ class Segnet(chainer.Chain):
 
     def decode(self, decoder_name, x, h):
         decoder = getattr(self, decoder_name)
-        old_skip_flag = decoder.use_skipping_connection
-        decoder.use_skipping_connection = self.use_skipping_connection
-
         h = decoder(h, connections=self.encoder.stores)
 
         output_shape = None
@@ -83,5 +80,3 @@ class Segnet(chainer.Chain):
         h = utils.crop(h, output_shape, decoder.n_dim)
 
         self.stores[decoder_name] = h
-
-        decoder.use_skipping_connection = old_skip_flag
