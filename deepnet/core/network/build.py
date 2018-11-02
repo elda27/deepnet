@@ -61,7 +61,7 @@ def get_process(name):
 
 
 def get_created_process_list():
-    return _created_process
+    return [ _created_process[key][proc] for key in _created_process ]
 
 
 def build_networks(config, step=None):
@@ -110,8 +110,8 @@ def build_networks(config, step=None):
             proc = registered_proc['proc']
             proc = deepnet.utils.get_field(proc, process_names[1:])
             update_source_variable = registered_proc['update']
-            _updatable_process.append(proc)
             if not update_source_variable:
+                _updatable_process.append(proc)
                 warnings.warn('A defined network is used on network stream but an not updatable network. {}'.format(
                     process_names[0]))
 

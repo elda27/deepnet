@@ -77,8 +77,8 @@ def main():
         network_config = deepnet.config.expand_variable(network_config)
     network_manager, visualizers = deepnet.core.build_networks(network_config)
 
-    for name, proc in deepnet.core.get_created_process_list().items():
-        if proc in deepnet.core.get_updatable_process_list():
+    for name, proc in deepnet.core.get_created_process_list():
+        if proc not in deepnet.core.get_updatable_process_list():
             continue
         model_list = list(
             glob.glob(os.path.join(archive_dir, name + '_*.npz')))
@@ -86,8 +86,8 @@ def main():
             raise ValueError(
                 'Model not found: {} in {}'.format(name, archive_dir))
         model_filename = model_list[-1]
-        chainer.serializers.load_npz(model_filename, proc['proc'])
-        proc['proc'].to_gpu()
+        chainer.serializers.load_npz(model_filename, proc)
+        proc.to_gpu()
 
     # Parse save list
     save_image_list = {}
