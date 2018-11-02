@@ -90,6 +90,8 @@ def main():
         chainer.serializers.load_npz(model_filename, proc)
         proc.to_gpu()
 
+    redirects = parse_redirect_string(args.redirect)
+
     # Parse save list
     save_image_list = {}
     for string in args.save:
@@ -114,6 +116,10 @@ def main():
                 break
 
             input_vars = deepnet.utils.batch_to_vars(batch)
+
+            for key in redirects:
+                input_vars[redirects[key]] = input_vars[key]
+
             # Inference
             for j, stage_input in enumerate(input_vars):
                 network_manager(mode='test', **stage_input)
@@ -187,7 +193,18 @@ def build_arguments():
     parser.add_argument('--output-dir', type=str, default=None)
     parser.add_argument('--mode', type=str, default='none')
 
+    parser.add_argument('--redirect', type=str,
+                        help='To redirect input variables.(format:<source_name>:<dest_name>')
+
     return parser
+
+
+def parse_redirect_string(strings):
+    result = {}
+    for string in strings:
+        src, dst = string.split(':')
+        result[src] = dst
+    return result
 
 
 def str2bool(string):
