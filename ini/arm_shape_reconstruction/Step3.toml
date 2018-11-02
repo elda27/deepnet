@@ -40,7 +40,7 @@ type   = "network.cae"
 
 # Arguments
 n_dim = 3
-in_channel = 1
+in_channel = 4
 out_channel = 4
 encode_dim = "${hyper_parameter.n_encode_dim}"
 dropout = "dropout"

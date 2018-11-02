@@ -26,8 +26,8 @@ type   = "network.cae"
 update = "loss"
 
 n_dim = 3
-in_channel = 1
-out_channel = 3
+in_channel = 4
+out_channel = 4
 encode_dim = "${hyper_parameter.n_encode_dim}"
 dropout = "dropout"
 use_batch_norm = true
