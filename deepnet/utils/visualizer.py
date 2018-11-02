@@ -12,6 +12,7 @@ import pandas as pd
 #import matplotlib.pyplot as plt
 import imageio
 import vtk
+from vtk.util.numpy_support import numpy_to_vtk
 import cv2
 import warnings
 import math
@@ -186,19 +187,19 @@ class PolyWrite(Visualizer):
 
     def render(self, variables):
         iteration = variables['__iteration__']
-        if iteration >= self.num_images and self.num_images >= 0:
+        if iteration >= self.num_surfaces and self.num_surfaces >= 0:
             return True
         elif iteration == 0:
             iteration = 0
             self.polys = dict()
         
         for name, verticies_name, faces_name in zip(self.names, self.vertices_names, self.faces_names):
-            batch_verts = self.variables[verticies_name][i]
+            batch_verts = self.variables[verticies_name]
             batch_faces = self.variables[faces_name]
             for i in range(batch_verts.shape[0]):
-                verts = batch_verts[i]
-                faces = batch_faces[i]
-                polydata = convert_poly_numpy_to_vtk((verts, faces))
+                verts = self.to_np(batch_verts[i])
+                faces = self.to_np(batch_faces[i])
+                polydata = self.convert_poly_numpy_to_vtk((verts, faces))
                 self.polys.setdefault(name, []).append(polydata)
                 
         return False
@@ -213,13 +214,13 @@ class PolyWrite(Visualizer):
                 )
 
                 writer = vtk.vtkPLYWriter()
-                writer.SetInput(surface)
+                writer.SetInputData(surface)
                 writer.SetFileName(self.output_filename.format(**self.variables, **preset))
                 writer.Update()
         self.polys.clear()
 
 
-    def convert_poly_numpy_to_vtk(poly):
+    def convert_poly_numpy_to_vtk(self, poly):
         vertices, faces = poly
         if not isinstance(faces, vtk.vtkPoints):
             vtkArray = numpy_to_vtk(vertices, deep=1)
@@ -394,6 +395,11 @@ class TileImageVisualizer(Visualizer):
         min_pix = np.amin(img)
         return (img.astype(np.float32) - min_pix) / (max_pix - min_pix + 1e-8)
 
+def get_default_color():
+    from matplotlib.pyplot import get_cmap
+    cmap = get_cmap('tab10')
+    return [cmap(i) for i  in range(10)]
+
 @register_visualizer('nch_visualizer')
 class NchImageVisualizer(TileImageVisualizer):
     def __init__(self, output_filename, num_rows, n_ch, n_ch_images, overlap_images, color_pallete = None, threshold=0.1, subtract=None):
@@ -401,7 +407,7 @@ class NchImageVisualizer(TileImageVisualizer):
         self.n_ch = n_ch
         self.n_ch_images = n_ch_images if isinstance(n_ch_images, list) else [ n_ch_images ]
         self.overlap_images = overlap_images if isinstance(overlap_images, list) else [ overlap_images ]
-        self.color_pallete = color_pallete if color_pallete is not None else process.get_default_color()
+        self.color_pallete = color_pallete if color_pallete is not None else get_default_color()
         self.subtract_images = subtract
 
         self.representation_vars = []
