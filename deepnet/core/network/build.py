@@ -61,7 +61,7 @@ def get_process(name):
 
 
 def get_created_process_list():
-    return [ _created_process[key][proc] for key in _created_process ]
+    return [ _created_process[key]['proc'] for key in _created_process ]
 
 
 def build_networks(config, step=None):
