@@ -17,7 +17,7 @@ def expand_dims(*input, axis=1):
 
 @register_process()
 def batch_reshape(x, shape):
-    shape = map(int, shape)
+    shape = tuple(map(int, shape))
     return F.reshape(x, (x.shape[0],) + shape)
 
 
