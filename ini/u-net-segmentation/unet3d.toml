@@ -14,7 +14,7 @@ optimizing_loss = ['loss_unet']
 
 [hyper_parameter]
 n_input_channel = 1
-n_class = 3
+n_class = 4
 n_layers = 3
 
 [[process]]
