@@ -22,7 +22,7 @@ label  = "Predictor"
 type   = "network.U-net"
 update = "loss_unet"
 n_dims = 3
-n_layers = "${hyper_parameter.n_layers}""
+n_layers = "${hyper_parameter.n_layers}"
 
 in_channel = "${hyper_parameter.n_input_channel}"
 out_channel = "${hyper_parameter.n_class}"
