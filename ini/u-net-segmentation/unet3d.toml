@@ -1,0 +1,130 @@
+
+[config]
+input = [
+  'image', 'label'
+]
+
+logging = [
+  '__train_iteration__', 
+  'train.loss_unet', 'valid.loss_unet'
+]
+
+archive_nodes = ['Predictor']
+optimizing_loss = ['loss_unet']
+
+[hyper_parameter]
+n_input_channel = 1
+n_class = 3
+
+[[process]]
+label  = "Predictor"
+type   = "network.U-net"
+update = "loss_unet"
+n_dims = 3
+n_layers = 3
+
+in_channel = "${hyper_parameter.n_input_channel}"
+out_channel = "${hyper_parameter.n_class}"
+
+is_bayesian = true
+batch_norm = true
+
+# Network declaration
+## Make body bone label
+
+## Input image is two dimensional but the shape of image must be (N, C, H, W).
+## (N is batch size and will automatically concatenate on to_gpu)
+[[network]]
+input=  ["image"]
+process="expand_dims"
+output= ["image_expanded"]
+axis=1
+
+[[network]]
+input=["image_expanded"]
+process="to_gpu"
+output=["gpu_image"]
+
+[[network]]
+input=  ["label"]
+process="expand_dims"
+output= ["label_expanded"]
+axis=1
+
+[[network]]
+input=["label_expanded"]
+process="to_gpu"
+output=["gpu_label"]
+
+## Predict label by unet
+[[network]]
+input="gpu_image"
+label="Predictor"
+process="Predictor"
+output="gpu_raw_pred_label"
+
+## Losses
+[[network]]
+input  ="gpu_label"
+process="cast_type"
+dtype='int32'
+output ="i_gpu_label"
+
+[[network]]
+input=[ "gpu_raw_pred_label", "i_gpu_label" ]
+process="chainer.softmax_cross_entropy"
+output="loss_unet"
+normalize=false
+test=false
+
+## Activated pred label
+[[network]]
+input   = "gpu_raw_pred_label"
+process = "chainer.softmax"
+output  = "gpu_pred_label"
+train = false
+
+## Index to Color label
+[[network]]
+input   = [ "gpu_label", "gpu_pred_label" ]
+process = "make_overlap_label"
+output  = [ "gpu_color_label", "gpu_color_pred_label"]
+train=false
+test=false
+
+## Blend DRR and label images.
+[[network]]
+input = ["gpu_image", "gpu_color_label", "gpu_image", "gpu_color_pred_label"]
+process = "blend_image"
+output = ["gpu_blend_label", "gpu_blend_pred_label"]
+train=false
+test=false
+
+# Visualize declaration
+[[visualize]]
+type  = "image_write"
+image_names = [ 
+  "gpu_image", 
+  "gpu_pred_label", "gpu_label" 
+  ]
+output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__name__}_{__index__}.mhd'
+num_images = 3
+
+[[visualize]]
+type = "tile_image_visualizer"
+output_filename = "${visualize_dir}/{__train_iteration__:08d}_tile.png"
+tile_shape = [5, 5]
+block_images =  [ 
+  'gpu_image',        'gpu_color_label',      'gpu_blend_label',    
+  'gpu_image',   'gpu_color_pred_label', 'gpu_blend_pred_label'
+  ]
+block_shape = [2, 3]
+
+[[visualize]]
+type = "nch_visualizer"
+output_filename = "${visualize_dir}/{__train_iteration__:08d}_nch_tile.png"
+num_rows = 5
+n_ch = "${hyper_parameter.n_class}"
+n_ch_images = ["gpu_label", "gpu_pred_label"]
+overlap_images = [ "gpu_blend_label", "gpu_blend_pred_label" ]
+subtract = [ ['gpu_label', 'gpu_pred_label'] ]
