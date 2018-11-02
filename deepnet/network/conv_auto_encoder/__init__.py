@@ -30,22 +30,22 @@ class Encoder(chainer.Chain):
         w = chainer.initializers.Normal(0.02)
 
         # Layer declaration
-        self.layers['c01'] = utils.CBR(n_dim, in_channel, n_units, ksize=3, stride=2, bn=use_batch_norm, sample='down', activation=F.relu, dropout=dropout)
-        self.layers['c02'] = utils.CBR(n_dim, n_units, n_units, ksize=3, stride=1, bn=use_batch_norm, sample='down', activation=F.relu, dropout=dropout)
+        self.layers['c01'] = utils.CBR(n_dim, in_channel, n_units, ksize=3, stride=2, bn=use_batch_norm, sample='down', activation=F.leaky_relu, dropout=dropout)
+        self.layers['c02'] = utils.CBR(n_dim, n_units, n_units, ksize=3, stride=1, bn=use_batch_norm, sample='down', activation=F.leaky_relu, dropout=dropout)
 
         n_unit = n_units
         for i in range(1, n_layers):
             next_unit = n_units * 2 ** i
-            self.layers['c{}1'.format(i)] = utils.CBR(n_dim, n_unit, next_unit, ksize=3, stride=2, bn=use_batch_norm, sample='down', activation=F.relu, dropout=dropout)
-            self.layers['c{}2'.format(i)] = utils.CBR(n_dim, next_unit, next_unit, ksize=3, stride=1, bn=use_batch_norm, sample='down', activation=F.relu, dropout=dropout)
+            self.layers['c{}1'.format(i)] = utils.CBR(n_dim, n_unit, next_unit, ksize=3, stride=2, bn=use_batch_norm, sample='down', activation=F.leaky_relu, dropout=dropout)
+            self.layers['c{}2'.format(i)] = utils.CBR(n_dim, next_unit, next_unit, ksize=3, stride=1, bn=use_batch_norm, sample='down', activation=F.leaky_relu, dropout=dropout)
             n_unit = next_unit
         
         self.n_end_units = n_unit
 
         for i in range(n_res_layers):
-            self.layers['res' + str(i)] = utils.ResBlock(n_dim, n_unit, n_unit, n_unit)
+            self.layers['res' + str(i)] = utils.ResBlock(n_dim, n_unit, n_unit, n_unit, activation=F.leaky_relu)
 
-        self.layers['c{}1'.format(n_layers)] = utils.CBR(n_dim, n_unit, 1, stride=1, bn=use_batch_norm, sample='down', activation=F.relu, dropout=dropout)
+        self.layers['c{}1'.format(n_layers)] = utils.CBR(n_dim, n_unit, 1, stride=3, ksize=3, bn=use_batch_norm, sample='down', activation=F.leaky_relu, dropout=dropout)
 
         self.layers['fc'] = L.Linear(None, out_size=encode_dim)
 
@@ -106,25 +106,25 @@ class Decoder(chainer.Chain):
         self.layers['fc'] = L.Linear(input_dim, reduce(lambda x, y: x * y, upsample_start_shape) * n_unit)
 
         for i in range(n_res_layers - 1, -1, -1):
-            self.layers['res' + str(i)] = utils.ResBlock(n_dim, n_unit, n_unit, n_unit)
+            self.layers['res' + str(i)] = utils.ResBlock(n_dim, n_unit, n_unit, n_unit, activation=F.leaky_relu)
 
-        self.layers['c{}1'.format(n_layers)] = utils.CBR(n_dim, self.eur * n_unit, n_unit, ksize=5, stride=3, bn=use_batch_norm, sample='up', activation=F.relu, dropout=dropout)
-        self.layers['c{}2'.format(n_layers)] = utils.CBR(n_dim, n_unit, n_unit // self.eur, ksize=3, stride=1, bn=use_batch_norm, sample='down', activation=F.relu, dropout=dropout)
+        self.layers['c{}1'.format(n_layers)] = utils.CBR(n_dim, self.eur * n_unit, n_unit, ksize=5, stride=3, bn=use_batch_norm, sample='up', activation=F.leaky_relu, dropout=dropout)
+        self.layers['c{}2'.format(n_layers)] = utils.CBR(n_dim, n_unit, n_unit // self.eur, ksize=3, stride=1, bn=use_batch_norm, sample='down', activation=F.leaky_relu, dropout=dropout)
         self.n_start_units = n_unit
 
         for i in range(n_layers - 1, 1, -1):
             next_unit = n_units * 2 ** (i - 1)
-            self.layers['c{}1'.format(i)] = utils.CBR(n_dim, n_unit, next_unit, ksize=3, stride=2, bn=use_batch_norm, sample='up', activation=F.relu, dropout=dropout)
-            self.layers['c{}2'.format(i)] = utils.CBR(n_dim, next_unit, next_unit // self.eur, ksize=3, stride=1, bn=use_batch_norm, sample='down', activation=F.relu, dropout=dropout)
+            self.layers['c{}1'.format(i)] = utils.CBR(n_dim, n_unit, next_unit, ksize=3, stride=2, bn=use_batch_norm, sample='up', activation=F.leaky_relu, dropout=dropout)
+            self.layers['c{}2'.format(i)] = utils.CBR(n_dim, next_unit, next_unit // self.eur, ksize=3, stride=1, bn=use_batch_norm, sample='down', activation=F.leaky_relu, dropout=dropout)
             n_unit = next_unit 
 
-        self.layers['c11'] = utils.CBR(n_dim, n_unit, n_unit, stride=2, bn=use_batch_norm, sample='up', activation=F.relu, dropout=dropout)
+        self.layers['c11'] = utils.CBR(n_dim, n_unit, n_unit, stride=2, bn=use_batch_norm, sample='up', activation=F.leaky_relu, dropout=dropout)
         self.layers['c12'] = L.ConvolutionND(n_dim, n_unit, out_channel, ksize=3, stride=1)
 
         chainer.Chain.__init__(self, **self.layers)
 
     def __call__(self, x, connections = None):
-        h = F.relu(self.layers['fc'](x))
+        h = F.leaky_relu(self.layers['fc'](x))
         self.stores['fc'] = h
         h = F.reshape(h, (h.shape[0], self.n_start_units,) + self.upsample_start_shape)
 

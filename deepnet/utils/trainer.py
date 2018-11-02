@@ -262,3 +262,9 @@ class Trainer:
                             shell=True)
         except:
             warnings.warn('please install graphviz and set your environment.')
+        try:
+            subprocess.call('dot -T svg {} -o {}'.format(graph_filename,
+                                                         graph_filename.replace('.dot', '.svg')),
+                            shell=True)
+        except:
+            warnings.warn('please install graphviz and set your environment.')
