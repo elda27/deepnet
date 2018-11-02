@@ -2,6 +2,7 @@ import chainer
 import chainer.cuda
 from chainer import functions as F
 from chainer import links as L
+from chainer.functions.noise.dropout import Dropout
 from chainer.utils import argument
 import numpy as np
 import functools
@@ -36,9 +37,9 @@ def bayesian_dropout(x, ratio=.5, **kwargs):
     argument.assert_kwargs_empty(kwargs)
 
     if chainer.config.train:
-        return F.Dropout(ratio).apply((x,))[0]
+        return Dropout(ratio).apply((x,))[0]
     else:
-        return F.Dropout(ratio).apply((x,))[0]
+        return Dropout(ratio).apply((x,))[0]
 
 # https://github.com/shelhamer/fcn.berkeleyvision.org/blob/master/surgery.py
 
