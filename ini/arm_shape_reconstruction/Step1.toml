@@ -1,0 +1,100 @@
+
+[config]
+input = [
+  "label"
+]
+
+logging = [
+  '__train_iteration__', 
+  'train.loss', 'valid.loss'
+]
+
+archive_loss = 'loss'
+archive_nodes = ['CAE_label']
+optimizing_loss = ['loss']
+
+[hyper_parameter]
+n_encode_dim = 512
+n_layers = 3
+gaussian_sigma = 0.2
+n_res_layers = 4
+
+# CAE for label segmentation
+[[process]]
+label  = "CAE_label"
+type   = "network.cae"
+update = "loss"
+
+n_dim = 3
+in_channel = 1
+out_channel = 3
+encode_dim = "${hyper_parameter.n_encode_dim}"
+dropout = "dropout"
+use_batch_norm = true
+n_layers = "${hyper_parameter.n_layers}"
+latent_activation = false
+
+# Network declaration
+
+[[network]]
+input="volume"
+process="expand_dims"
+output="volume_expanded"
+axis=1
+
+[[network]]
+input=["volume_expanded", "label"]
+process="to_gpu"
+output=["gpu_volume", "gpu_f_label"]
+
+[[network]]
+input="gpu_f_label"
+process="cast_type"
+dtype='int32'
+output="gpu_label"
+
+[[network]]
+input = "gpu_label"
+process= "label_to_probability"
+output = "gpu_label_probs"
+
+## Apply gaussian noise
+[[network]]
+input = "gpu_label_probs"
+process = "apply_gaussian_noise"
+output = "gpu_noisy_label_probs"
+
+sigma = "${hyper_parameter.gaussian_sigma}"
+clip = [0.0, 1.0]
+
+## Reconstruct label
+[[network]]
+input="gpu_noisy_label_probs"
+label="CAE_label"
+process="CAE_label"
+output="gpu_reconstruct_label_probs"
+
+[[network]]
+input=[ "gpu_reconstruct_label_probs", "gpu_label" ]
+process="chainer.softmax_cross_entropy"
+output="loss"
+
+[[network]]
+input="gpu_reconstruct_label_probs"
+process="chainer.softmax"
+output="gpu_reconstruct_label_softmax_probs"
+
+[[network]]
+input="gpu_reconstruct_label_softmax_probs"
+process="chainer.argmax"
+output="gpu_reconstruct_label"
+axis=1
+
+# Visualize declaration
+[[visualize]]
+type  = "image_write"
+image_names = [ 
+  "gpu_label", "gpu_reconstruct_label", "gpu_noisy_label_probs", "gpu_reconstruct_label_softmax_probs"
+]
+output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__name__}_{__index__}.mhd'
+num_images = 3
