@@ -109,7 +109,7 @@ def main():
     optimizing_loss = network_config['config']['optimizing_loss']
     write_architecture_loss = (
         os.path.join(log_dirs['archive'], 'model.dot'), 
-        network_config['config'].get('archive_loss')
+        network_config['config'].get('archive_loss', network_config['config']['optimizing_loss'][0])
     )
     # Setup optimizer
     optimizers = []
