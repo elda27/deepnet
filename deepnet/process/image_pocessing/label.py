@@ -80,3 +80,25 @@ def map_index_label(label):
             np.concatenate((r, g, b), axis=mask.ndim)
 
     return np.transpose(color_image, (1, 0, 2, 3))
+
+
+@register_process()
+def label_to_probability(label):
+    xp = cuda.get_array_module(label)
+    if isinstance(label, chainer.Variable):
+        label = label.data
+
+    if label.dtype.kind != 'i':
+        label = label.astype(xp.int32)
+
+    unique_indexes = xp.unique(label)
+
+    probs = xp.zeros(
+        (len(unique_indexes), ) + label.shape,
+        dtype=xp.float32
+    )
+    for i, index in enumerate(unique_indexes):
+        probs[i] = (label == index).astype(xp.float32)
+    probs = xp.rollaxis(probs, 1, axis=1)
+
+    return chainer.Variable(probs)
