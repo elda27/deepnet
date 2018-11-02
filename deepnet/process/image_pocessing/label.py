@@ -86,7 +86,7 @@ def map_index_label(label):
 
 
 @register_process()
-def label_to_probability(label):
+def label_to_probability(label, n_channel=None):
     xp = cuda.get_array_module(label)
     if isinstance(label, chainer.Variable):
         label = label.data
@@ -99,8 +99,11 @@ def label_to_probability(label):
     elif xp == cp:
         unique_indexes = unique(label)
 
+    if n_channel is None:
+        n_channel = len(unique_indexes)
+
     probs = xp.zeros(
-        (len(unique_indexes), ) + label.shape,
+        (n_channel, ) + label.shape,
         dtype=xp.float32
     )
     for i, index in enumerate(unique_indexes):

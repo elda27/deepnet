@@ -92,6 +92,8 @@ input = "gpu_label"
 process= "label_to_probability"
 output = "gpu_label_probs"
 
+n_channel = 4
+
 [[network]]
 input="gpu_projections"
 process = "Segnet"
