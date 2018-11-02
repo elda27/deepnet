@@ -108,7 +108,7 @@ def label_to_probability(label, n_channel=None):
     )
     for i, index in enumerate(unique_indexes):
         probs[i] = (label == index).astype(xp.float32)
-    probs = xp.rollaxis(probs, 1, 1)
+    probs = xp.rollaxis(probs, 1, 0)
 
     return chainer.Variable(probs)
 
