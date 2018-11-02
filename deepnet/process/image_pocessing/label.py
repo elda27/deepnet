@@ -148,7 +148,7 @@ def unique(ar, return_index=False, return_inverse=False,
     if axis is not None:
         raise NotImplementedError('axis option is not supported yet.')
 
-    ar = cupy.asarray(ar).flatten()
+    ar = cp.asarray(ar).flatten()
 
     if return_index or return_inverse:
         perm = ar.argsort()
@@ -156,7 +156,7 @@ def unique(ar, return_index=False, return_inverse=False,
     else:
         ar.sort()
         aux = ar
-    mask = cupy.empty(aux.shape, dtype=cupy.bool_)
+    mask = cp.empty(aux.shape, dtype=cp.bool_)
     mask[0] = True
     mask[1:] = aux[1:] != aux[:-1]
 
@@ -168,13 +168,13 @@ def unique(ar, return_index=False, return_inverse=False,
     if return_index:
         ret += perm[mask],
     if return_inverse:
-        imask = cupy.cumsum(mask) - 1
-        inv_idx = cupy.empty(mask.shape, dtype=cupy.intp)
+        imask = cp.cumsum(mask) - 1
+        inv_idx = cp.empty(mask.shape, dtype=cp.intp)
         inv_idx[perm] = imask
         ret += inv_idx,
     if return_counts:
-        nonzero = cupy.nonzero(mask)[0]
-        idx = cupy.empty((nonzero.size + 1,), nonzero.dtype)
+        nonzero = cp.nonzero(mask)[0]
+        idx = cp.empty((nonzero.size + 1,), nonzero.dtype)
         idx[:-1] = nonzero
         idx[-1] = mask.size
         ret += idx[1:] - idx[:-1],
