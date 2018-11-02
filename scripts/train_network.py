@@ -213,7 +213,7 @@ def build_arguments():
     parser.add_argument('--step-index', type=int, default=1, help='step index')
 
     parser.add_argument('--freeze', type=str, default=[], nargs='*', help='Disable to update processes declared in network config.')
-    parser.add_argument('--redirect', type=str, default=[], nargs='*', help='To redirect input variables.')
+    parser.add_argument('--redirect', type=str, default=[], nargs='*', help='To redirect input variables.(format:<source_name>:<dest_name>')
     parser.add_argument('--restart', action='store_true', default=False, help='to restart the training and initialize model by the latest parameter.')
 
     parser.add_argument('--debug', action='store_true', default=False, help='If true, this session will start single process.')
