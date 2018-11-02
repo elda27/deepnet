@@ -34,14 +34,14 @@ batch_norm = true
 
 ## Input image is two dimensional but the shape of image must be (N, C, H, W).
 ## (N is batch size and will automatically concatenate on to_gpu)
-[[network]]
-input=  ["image"]
-process="expand_dims"
-output= ["image_expanded"]
-axis=1
+# [[network]]
+# input=  ["image"]
+# process="expand_dims"
+# output= ["image_expanded"]
+# axis=1
 
 [[network]]
-input=["image_expanded"]
+input=["image"]
 process="to_gpu"
 output=["gpu_image"]
 
