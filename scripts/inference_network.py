@@ -79,6 +79,7 @@ def main():
 
     for name, proc in deepnet.core.get_created_process_dict().items():
         if proc not in deepnet.core.get_updatable_process_list():
+            proc.to_gpu()
             continue
         model_list = list(
             glob.glob(os.path.join(archive_dir, name + '_*.npz')))
