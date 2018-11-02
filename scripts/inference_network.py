@@ -77,7 +77,7 @@ def main():
         network_config = deepnet.config.expand_variable(network_config)
     network_manager, visualizers = deepnet.core.build_networks(network_config)
 
-    for name, proc in deepnet.core.get_created_process_list():
+    for name, proc in deepnet.core.get_created_process_dict().items():
         if proc not in deepnet.core.get_updatable_process_list():
             continue
         model_list = list(
