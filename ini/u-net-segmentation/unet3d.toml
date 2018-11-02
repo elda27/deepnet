@@ -81,50 +81,22 @@ test=false
 [[network]]
 input   = "gpu_raw_pred_label"
 process = "chainer.softmax"
-output  = "gpu_pred_label"
+output  = "gpu_pred_softmax_label"
 train = false
 
-## Index to Color label
 [[network]]
-input   = [ "gpu_label", "gpu_pred_label" ]
-process = "make_overlap_label"
-output  = [ "gpu_color_label", "gpu_color_pred_label"]
-train=false
-test=false
+input="gpu_pred_softmax_label"
+process="chainer.argmax"
+output="gpu_pred_label"
+axis=1
 
-## Blend DRR and label images.
-[[network]]
-input = ["gpu_image", "gpu_color_label", "gpu_image", "gpu_color_pred_label"]
-process = "blend_image"
-output = ["gpu_blend_label", "gpu_blend_pred_label"]
-train=false
-test=false
 
 # Visualize declaration
 [[visualize]]
 type  = "image_write"
 image_names = [ 
-  "gpu_image", 
+  "gpu_image", "gpu_pred_softmax_label"
   "gpu_pred_label", "gpu_label" 
   ]
 output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__name__}_{__index__}.mhd'
 num_images = 3
-
-[[visualize]]
-type = "tile_image_visualizer"
-output_filename = "${visualize_dir}/{__train_iteration__:08d}_tile.png"
-tile_shape = [5, 5]
-block_images =  [ 
-  'gpu_image',        'gpu_color_label',      'gpu_blend_label',    
-  'gpu_image',   'gpu_color_pred_label', 'gpu_blend_pred_label'
-  ]
-block_shape = [2, 3]
-
-[[visualize]]
-type = "nch_visualizer"
-output_filename = "${visualize_dir}/{__train_iteration__:08d}_nch_tile.png"
-num_rows = 5
-n_ch = "${hyper_parameter.n_class}"
-n_ch_images = ["gpu_label", "gpu_pred_label"]
-overlap_images = [ "gpu_blend_label", "gpu_blend_pred_label" ]
-subtract = [ ['gpu_label', 'gpu_pred_label'] ]
