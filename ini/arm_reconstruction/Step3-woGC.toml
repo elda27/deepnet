@@ -32,7 +32,7 @@ gaussian_sigma = 20
 n_res_layers = 4
 
 weight_reconstruct = 1.0
-weight_latent_representation = 10.0
+weight_latent_representation = 1e3
 
 [[process]]
 label  = "CAE"
@@ -40,7 +40,8 @@ type   = "network.cae"
 
 # Arguments
 n_dim = 3
-in_out_channel = 1
+in_channel = 1
+out_channel = 1
 encode_dim = "${hyper_parameter.n_encode_dim}"
 dropout = "dropout"
 use_batch_norm = true
