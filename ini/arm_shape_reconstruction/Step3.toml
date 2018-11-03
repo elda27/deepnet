@@ -109,12 +109,12 @@ test=false
 
 [[network]]
 input = "gpu_reconstruct_label_softmax_probs"
-process = "CAE.encoder"
+process = "CAE_label.encoder"
 output = "gpu_reconstruct_latent"
 
 [[network]]
 input = "gpu_label_probs"
-process = "CAE.encoder"
+process = "CAE_label.encoder"
 output = "gpu_truth_latent"
 
 [[network]]
