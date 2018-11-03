@@ -193,7 +193,7 @@ def build_arguments():
     parser.add_argument('--output-dir', type=str, default=None)
     parser.add_argument('--mode', type=str, default='none')
 
-    parser.add_argument('--redirect', type=str,
+    parser.add_argument('--redirect', type=str, nargs='+', default=[],
                         help='To redirect input variables.(format:<source_name>:<dest_name>')
 
     return parser
