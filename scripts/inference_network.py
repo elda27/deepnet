@@ -117,11 +117,11 @@ def main():
 
             input_vars = deepnet.utils.batch_to_vars(batch)
 
-            for key in redirects:
-                input_vars[redirects[key]] = input_vars[key]
-
             # Inference
             for j, stage_input in enumerate(input_vars):
+                for key in redirects: # Redirect input variables
+                    stage_input[redirects[key]] = stage_input[key]
+
                 network_manager(mode='test', **stage_input)
                 variables['__stage__'] = j
                 variables.update(network_manager.variables)
