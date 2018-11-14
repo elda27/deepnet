@@ -25,7 +25,8 @@ optimizing_loss = ['loss']
 [hyper_parameter]
 n_encode_dim = 512
 n_layers = 3
-gaussian_sigma = 20
+volume_gaussian_sigma = 20
+label_gaussian_sigma = 0.2
 n_res_layers = 4
 
 [[process]]
@@ -36,7 +37,7 @@ update = "loss"
 # Arguments
 n_dim = 3
 n_tasks = 2
-in_channel = 1
+in_channel = 5
 out_channel = [1, 4]
 encode_dim = "${hyper_parameter.n_encode_dim}"
 dropout = "dropout"
@@ -61,11 +62,19 @@ input=["volume_expanded", "label"]
 process="to_gpu"
 output=["gpu_volume", "gpu_f_label"]
 
+# Generate label probability
 [[network]]
 input="gpu_f_label"
 process="cast_type"
 dtype='int32'
 output="gpu_label"
+
+[[network]]
+input = "gpu_label"
+process= "label_to_probability"
+output = "gpu_label_probs"
+
+n_channel = 4
 
 ## Apply gaussian noise
 [[network]]
@@ -73,14 +82,35 @@ input = "gpu_volume"
 process = "apply_gaussian_noise"
 output = "gpu_noisy_volume"
 
-sigma = "${hyper_parameter.gaussian_sigma}"
+sigma = "${hyper_parameter.volume_gaussian_sigma}"
+
+[[network]]
+input = "gpu_label_probs"
+process = "apply_gaussian_noise"
+output = "gpu_noisy_label_probs"
+
+sigma = "${hyper_parameter.label_gaussian_sigma}"
+clip = [0.0, 1.0]
+
+## Concatenate volume and label probs.
+[[network]]
+input = ["gpu_noisy_volume", "gpu_noisy_label_probs"]
+process= "concat"
+output = "gpu_noisy_mix_volume"
 
 ## Reconstruct label
 [[network]]
-input="gpu_noisy_volume"
+input="gpu_noisy_mix_volume"
 label="CAE"
 process="CAE"
-output=["gpu_reconstruct_volume", "gpu_reconstruct_probs"]
+output=["gpu_reconstruct_mix_volume", "gpu_reconstruct_probs"]
+
+# [[network]]
+# input = "gpu_reconstruct_mix_volume"
+# process="split"
+# pos=1
+# axis=1
+# output=["gpu_reconstruct_volume", "gpu_reconstruct_probs"]
 
 [[network]]
 input=[ "gpu_volume", "gpu_reconstruct_volume" ]

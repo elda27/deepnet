@@ -29,19 +29,19 @@ freezing_layer = [ 'Segnet.decoder1', 'Segnet.decoder2' ]
 [hyper_parameter]
 n_encode_dim = 512
 n_layers = 3
-gaussian_sigma = 20
 n_res_layers = 4
 
 weight_reconstruct = 1.0
 
+# In order to load the model.
 [[process]]
 label  = "CAE"
 type   = "network.cae"
 
-# Arguments
+## Arguments
 n_dim = 3
 n_task = 2
-in_channel = 1
+in_channel = 5
 out_channel = [1, 4]
 encode_dim = "${hyper_parameter.n_encode_dim}"
 dropout = "dropout"
@@ -64,6 +64,7 @@ in_channel = 2
 [[process]]
 label="multi_task_combine"
 loss_types=["euclidean", "softmax_cross_entropy"]
+initialize=[10.0, 1.6] # this weight will be reciprocal squared value.
 type   = "network.multi_task_loss"
 
 [[initialize]]
