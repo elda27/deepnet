@@ -48,7 +48,7 @@ latent_activation = false # If true, the sparse penalty is avaiable.
 [[process]]
 label="multi_task_combine"
 loss_types=["euclidean", "softmax_cross_entropy"]
-initialize=[10.0, 1.6] # this weight will be reciprocal squared value.
+initialize=[1.0, 20.0] # this weight will be reciprocal squared value.
 type   = "network.multi_task_loss"
 
 [[network]]
