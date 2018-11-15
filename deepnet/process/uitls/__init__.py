@@ -48,3 +48,17 @@ def get_latent_representation(*_, source):
     proc = get_field(get_process(accessors[0]), accessors[1:-1])
 
     return proc.stores[accessors[-1]]
+
+
+@register_process()
+def concat(*x, axis=1):
+    return F.concat(tuple(x), axis=axis)
+
+
+@register_process()
+def split(x, pos, axis=1):
+    first = tuple(slice(pos) if i == axis else slice(x.shape[i])
+                  for i in range(x.ndim))
+    last = tuple(slice(pos, x.shape[i]) if i == axis else slice(x.shape[i])
+                 for i in range(x.ndim))
+    return x[first], x[last]
