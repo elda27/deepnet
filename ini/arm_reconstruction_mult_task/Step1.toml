@@ -103,7 +103,7 @@ output = "gpu_noisy_mix_volume"
 input="gpu_noisy_mix_volume"
 label="CAE"
 process="CAE"
-output=["gpu_reconstruct_mix_volume", "gpu_reconstruct_probs"]
+output=["gpu_reconstruct_volume", "gpu_reconstruct_probs"]
 
 # [[network]]
 # input = "gpu_reconstruct_mix_volume"
