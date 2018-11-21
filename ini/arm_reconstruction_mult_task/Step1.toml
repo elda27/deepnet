@@ -48,7 +48,7 @@ latent_activation = false # If true, the sparse penalty is avaiable.
 [[process]]
 label="multi_task_combine"
 loss_types=["euclidean", "softmax_cross_entropy"]
-initialize=[1.0, 20.0] # this weight will be reciprocal squared value.
+#initialize=[1.0, 20.0] # this weight will be reciprocal squared value.
 type   = "network.multi_task_loss"
 
 [[network]]
@@ -114,14 +114,17 @@ output=["gpu_reconstruct_volume", "gpu_reconstruct_probs"]
 
 [[network]]
 input=[ "gpu_volume", "gpu_reconstruct_volume" ]
-process="loss.euclidean_distance"
+process="loss.l2_norm_distance"
 output="loss_reconstruct_volume"
+reduce="no"
 test=false
 
 [[network]]
 input=[ "gpu_reconstruct_probs", "gpu_label" ]
 process="chainer.softmax_cross_entropy"
 output="loss_reconstruct_label"
+reduce="no"
+test=false
 
 [[network]]
 input=["loss_reconstruct_volume", "loss_reconstruct_label"]

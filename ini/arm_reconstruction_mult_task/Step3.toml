@@ -66,7 +66,7 @@ in_channel = 2
 [[process]]
 label="multi_task_combine"
 loss_types=["euclidean", "softmax_cross_entropy", "euclidean"]
-initialize=[1.0, 20.0, 10.0] # this weight will be reciprocal squared value.
+#initialize=[1.0, 20.0, 10.0] # this weight will be reciprocal squared value.
 type   = "network.multi_task_loss"
 
 [[initialize]]
@@ -109,9 +109,10 @@ output  = ["gpu_reconstruct_volume", "gpu_reconstruct_probs"]
 
 [[network]]
 input=[ "gpu_volume", "gpu_reconstruct_volume" ]
-process="loss.euclidean_distance"
+process="loss.l2_norm_distance"
 output ="loss_euclidean"
 test=false
+reduce="no"
 
 # Get encodeer of latent representation
 [[network]]
@@ -143,9 +144,10 @@ output = "gpu_reconstruct_mix_volume_latent"
 
 [[network]]
 input = ["gpu_volume_latent", "gpu_reconstruct_volume_latent"]
-process = "loss.euclidean_distance"
+process = "loss.l2_norm_distance"
 output = "loss_latent_representation"
 test=false
+reduce="no"
 
 # Loss label
 
@@ -153,6 +155,7 @@ test=false
 input=[ "gpu_reconstruct_probs", "gpu_label" ]
 process="chainer.softmax_cross_entropy"
 output="loss_reconstruct_label"
+reduce="no"
 
 [[network]]
 input=["loss_reconstruct_volume", "loss_reconstruct_label", "loss_latent_representation"]
