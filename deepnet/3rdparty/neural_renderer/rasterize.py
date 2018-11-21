@@ -240,8 +240,8 @@ class Rasterize(chainer.Function):
             faces_inv = self.xp.zeros_like(self.faces)
             loop = self.xp.arange(self.batch_size * self.num_faces).astype('int32')
             chainer.cuda.elementwise(
-                'int32 _, raw float32 faces, raw float32 faces_inv',
-                '',
+                'int32 _, raw float32 faces',
+                'raw float32 faces_inv',
                 string.Template('''
                     /* face[v012][RGB] */
                     const int is = ${image_size};
@@ -279,9 +279,8 @@ class Rasterize(chainer.Function):
             # for each pixel
             loop = self.xp.arange(self.batch_size * self.image_size * self.image_size).astype('int32')
             chainer.cuda.elementwise(
-                'int32 _, raw float32 faces, raw float32 faces_inv, raw int32 face_index_map, ' +
-                'raw float32 weight_map, raw float32 depth_map, raw float32 face_inv_map',
-                '',
+                'int32 _, raw float32 faces, raw float32 faces_inv', 
+                'raw int32 face_index_map, raw float32 weight_map, raw float32 depth_map, raw float32 face_inv_map',
                 string.Template('''
                     const int is = ${image_size};
                     const int nf = ${num_faces};
@@ -292,8 +291,8 @@ class Rasterize(chainer.Function):
                     const float yp = (2. * yi + 1 - is) / is;
                     const float xp = (2. * xi + 1 - is) / is;
 
-                    float* face = &faces[bn * nf * 9] - 9;
-                    float* face_inv = &faces_inv[bn * nf * 9] - 9;
+                    const float* face = &faces[bn * nf * 9] - 9;
+                    const float* face_inv = &faces_inv[bn * nf * 9] - 9;
                     float depth_min = ${far};
                     int face_index_min = -1;
                     float weight_min[3];
