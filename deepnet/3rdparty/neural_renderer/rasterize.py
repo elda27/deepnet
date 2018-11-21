@@ -526,9 +526,8 @@ class Rasterize(chainer.Function):
         # for each face
         loop = self.xp.arange(self.batch_size * self.num_faces).astype('int32')
         chainer.cuda.elementwise(
-            'int32 _, raw float32 faces, raw int32 face_index_map, raw float32 rgb_map, raw float32 alpha_map, ' +
+            'int32 _, raw float32 faces, raw int32 face_index_map, raw float32 rgb_map, raw float32 alpha_map',
             'raw float32 grad_rgb_map, raw float32 grad_alpha_map, raw float32 grad_faces',
-            '',
             string.Template('''
                 const int bn = i / ${num_faces};
                 const int fn = i % ${num_faces};
@@ -581,8 +580,8 @@ class Rasterize(chainer.Function):
                             /* get color of in-pixel and out-pixel */
                             float alpha_in;
                             float alpha_out;
-                            float *rgb_in;
-                            float *rgb_out;
+                            const float *rgb_in;
+                            const float *rgb_out;
                             int map_index_in, map_index_out;
                             if (axis == 0) {
                                 map_index_in = bn * is * is + d1_in * is + d0;
@@ -607,9 +606,9 @@ class Rasterize(chainer.Function):
                                 if (0 < direction) d1_limit = is - 1; else d1_limit = 0;
                                 int d1_from = max(min(d1_out, d1_limit), 0);
                                 int d1_to = min(max(d1_out, d1_limit), is - 1);
-                                float* alpha_map_p;
+                                const float* alpha_map_p;
                                 float* grad_alpha_map_p;
-                                float* rgb_map_p;
+                                const float* rgb_map_p;
                                 float* grad_rgb_map_p;
                                 int map_offset, map_index_from;
                                 if (axis == 0) {
@@ -671,10 +670,10 @@ class Rasterize(chainer.Function):
                                 int d1_from = max(min(d1_in, d1_limit), 0);
                                 int d1_to = min(max(d1_in, d1_limit), is - 1);
 
-                                int* face_index_map_p;
-                                float* alpha_map_p;
+                                const int* face_index_map_p;
+                                const float* alpha_map_p;
                                 float* grad_alpha_map_p;
-                                float* rgb_map_p;
+                                const float* rgb_map_p;
                                 float* grad_rgb_map_p;
                                 int map_index_from;
                                 int map_offset;
