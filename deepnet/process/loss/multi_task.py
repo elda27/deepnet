@@ -2,7 +2,10 @@ from deepnet.core.registration import register_network
 from corenet import declare_node_type
 import chainer
 import chainer.functions as F
+import chainer.links as L
 import chainer.initializers
+from chainer.initializers import Constant
+from chainer.backends import cuda
 import numpy as np
 import functools
 
@@ -16,8 +19,13 @@ class MultiTaskLoss(chainer.Chain):
         self.combine_methods = []
 
         if initialize is None:
-            initialize = [chainer.initializers.Constant(1.0)
+            initialize = [Constant(1.0)
                           for i in range(len(loss_types))]
+        elif isinstance(initialize, (list, tuple)):
+            if isinstance(initialize[0], float):
+                initialize = [Constant(i) for i in initialize]
+        else:
+            initialize = [initialize for _ in loss_types]
 
         for i, loss_type in enumerate(self.loss_types):
             with self.init_scope():
@@ -37,27 +45,20 @@ class MultiTaskLoss(chainer.Chain):
             else:
                 raise AttributeError()
 
-    def __call__(self, *losses):
+    def forward(self, *losses):
         loss = None
         #w_root = 1.0
         for i, combine_method in enumerate(self.combine_methods):
             W = getattr(self, 'sigma_{}'.format(i))
-            #W = W * w_root
+            W = F.broadcast_to(W, losses[i].shape)
             if loss is None:
-                loss = combine_method(
-                    F.reshape(losses[i], (1,)), F.reshape(W, (1,)))
+                loss = F.sum(combine_method(losses[i], W))
             else:
-                loss += combine_method(
-                    F.reshape(losses[i], (1,)), F.reshape(W, (1,)))
+                loss += F.sum(combine_method(losses[i], W))
         return loss
 
-    def log(self, W):
-        xp = chainer.cuda.get_array_module(W)
-        f_min = chainer.Variable(xp.ones_like(W) * 1e-8)
-        return F.log(F.maximum(W, f_min))
-
     def combine_softmax_cross_entropy(self, loss, W):
-        return 1.0 / (W ** 2) * loss + self.log(W)
+        return F.exp(-2.0 * W) * loss + W
 
     def combine_euclidean(self, loss, W):
-        return 1.0 / (2.0 * W ** 2) * loss + self.log(W)
+        return F.exp(-W) * loss + W
