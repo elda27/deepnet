@@ -84,7 +84,7 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
         for _, inputs in sorted(groups.items(), key=lambda x:x[0]):
             stage_input = {}
             for input_ in inputs:
-                input_['type']
+                
                 
                 case_names = None
 
@@ -114,7 +114,7 @@ class GeneralDataset(chainer.dataset.DatasetMixin):
 
                 labels = tuple(input_['label'])
                 stage_input[labels] = {
-                    'input': load_image,
+                    'input': self.input_methods[input_['type']],
                     'paths': paths,
                 }
                 
@@ -288,7 +288,7 @@ def load_surface(filename):
         faces = vtk_to_numpy(poly.GetPolys().GetData())
         faces = faces.reshape(-1, 4)[:, 1:]
 
-        return vertices, faces
+        return vertices.astype(np.float32), faces.astype(np.int32)
     elif ext in ('.npy'):
         data = np.load(filename)
         return data
