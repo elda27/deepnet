@@ -10,9 +10,9 @@ input = [
 
 logging = [
   '__train_iteration__', 
-  'train.loss_reconstruct_volume', 'valid.loss_reconstruct_volume',
-  'train.loss_reconstruct_label', 'valid.loss_reconstruct_label',
-  'train.loss_latent_representation', 'valid.loss_latent_representation',
+  'train.loss_reconstruct_volume_reduce', 'valid.loss_reconstruct_volume_reduce',
+  'train.loss_reconstruct_label_reduce', 'valid.loss_reconstruct_label_reduce',
+  'train.loss_latent_representation_reduce', 'valid.loss_latent_representation_reduce',
   'train.loss', 'valid.loss'
 ]
 logging_weights = [
@@ -161,6 +161,21 @@ reduce="no"
 input=["loss_reconstruct_volume", "loss_reconstruct_label", "loss_latent_representation"]
 process="multi_task_combine"
 output="loss"
+
+[[network]]
+input="loss_reconstruct_volume"
+process="chainer.sum"
+output="loss_reconstruct_volume_reduce"
+
+[[network]]
+input="loss_latent_representation"
+process="chainer.sum"
+output="loss_latent_representation_reduce"
+
+[[network]]
+input="loss_reconstruct_label"
+process="chainer.sum"
+output="loss_reconstruct_label_reduce"
 
 [[network]]
 input='gpu_reconstruct_probs'

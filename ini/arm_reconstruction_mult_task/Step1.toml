@@ -7,8 +7,8 @@ input = [
 
 logging = [
   '__train_iteration__', 
-  'train.loss_reconstruct_volume', 'valid.loss_reconstruct_volume',
-  'train.loss_reconstruct_label', 'valid.loss_reconstruct_label',
+  'train.loss_reconstruct_volume_reduce', 'valid.loss_reconstruct_volume_reduce',
+  'train.loss_reconstruct_label_reduce', 'valid.loss_reconstruct_label_reduce',
   'train.loss', 'valid.loss'
 ]
 logging_weights = [
@@ -134,6 +134,16 @@ output="loss"
 test=false
 
 [[network]]
+input="loss_reconstruct_volume"
+process="chainer.sum"
+output="loss_reconstruct_volume_reduce"
+
+[[network]]
+input="loss_reconstruct_label"
+process="chainer.sum"
+output="loss_reconstruct_label_reduce"
+
+[[network]]
 input="gpu_reconstruct_probs"
 process="chainer.softmax"
 output="gpu_reconstruct_label"
@@ -153,7 +163,7 @@ image_names = [
   "volume", "diff_volume", 
   "gpu_reconstruct_volume", "gpu_volume" ,
   "gpu_reconstruct_label", "gpu_label"
-  ]
-output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__name__}.mhd'
+]
+output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__name__}_{__index__}.mhd'
 num_images = 3
 
