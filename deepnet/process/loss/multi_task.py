@@ -45,7 +45,7 @@ class MultiTaskLoss(chainer.Chain):
             else:
                 raise AttributeError()
 
-    def forward(self, *losses):
+    def __call__(self, *losses):
         loss = None
         #w_root = 1.0
         for i, combine_method in enumerate(self.combine_methods):
