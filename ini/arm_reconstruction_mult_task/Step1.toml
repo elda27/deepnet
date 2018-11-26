@@ -25,8 +25,8 @@ optimizing_loss = ['loss']
 [hyper_parameter]
 n_encode_dim = 512
 n_layers = 3
-volume_gaussian_sigma = 0.1
-label_gaussian_sigma = 0.1
+volume_gaussian_sigma = 0.01
+label_gaussian_sigma = 0.05
 n_res_layers = 4
 
 [[process]]
@@ -161,7 +161,7 @@ absolute = true
 type  = "image_write"
 image_names = [ 
   "volume", "diff_volume", 
-  "gpu_reconstruct_volume", "gpu_volume" ,
+  "gpu_reconstruct_volume", 
   "gpu_reconstruct_label", "gpu_label",
   "gpu_noisy_volume", "gpu_noisy_mix_volume"
 ]
