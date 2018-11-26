@@ -1,8 +1,13 @@
 from deepnet.core.registration import register_network
 from corenet import declare_node_type
-from neural_renderer import Renderer, get_points_from_angles
+from neural_renderer import Renderer, get_points_from_angles, look_at
 import chainer
+from chainer.backends import cuda
 import chainer.functions as F
+import math
+import numpy as np
+import vtk
+import vtkcast
 
 
 @register_network('network.mesh_renderer')
@@ -26,10 +31,17 @@ class MeshRenderer(chainer.Link):
     def __call__(self, vertices, faces):
         images = []
         for view in self.views:
-            self.renderer.eye = get_points_from_angles(*view)
+            xp = cuda.get_array_module(vertices.data)
+            transformed_vertices = look_at(
+                vertices,
+                get_points_from_angles(*view),
+                up=xp.array([0.0, 1.0, 0.0], dtype=xp.float32)
+            )
+            transformed_vertices.camera_mode = ''
             images.append(
                 F.expand_dims(
-                    self.renderer.render_silhouettes(vertices, faces),
+                    self.renderer.render_silhouettes(
+                        transformed_vertices, faces),
                     axis=1
                 )
             )
