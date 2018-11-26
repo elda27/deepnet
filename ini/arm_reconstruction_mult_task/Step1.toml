@@ -25,8 +25,8 @@ optimizing_loss = ['loss']
 [hyper_parameter]
 n_encode_dim = 512
 n_layers = 3
-volume_gaussian_sigma = 20
-label_gaussian_sigma = 0.2
+volume_gaussian_sigma = 0.1
+label_gaussian_sigma = 0.1
 n_res_layers = 4
 
 [[process]]
@@ -162,7 +162,8 @@ type  = "image_write"
 image_names = [ 
   "volume", "diff_volume", 
   "gpu_reconstruct_volume", "gpu_volume" ,
-  "gpu_reconstruct_label", "gpu_label"
+  "gpu_reconstruct_label", "gpu_label",
+  "gpu_noisy_volume", "gpu_noisy_mix_volume"
 ]
 output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__name__}_{__index__}.mhd'
 num_images = 3
