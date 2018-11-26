@@ -802,9 +802,9 @@ class Rasterize(chainer.Function):
         # for each pixel
         loop = self.xp.arange(self.batch_size * self.image_size * self.image_size).astype('int32')
         chainer.cuda.elementwise(
-            'int32 _, raw float32 faces, raw float32 depth_map, raw int32 face_index_map, ' +
-            'raw float32 face_inv_map, raw float32 weight_map, raw float32 grad_depth_map, raw float32 grad_faces',
-            '',
+            'int32 _, raw float32 faces, raw float32 depth_map, raw int32 face_index_map, '
+            'raw float32 face_inv_map, raw float32 weight_map, raw float32 grad_depth_map',
+            'raw float32 grad_faces',
             string.Template('''
                 const int fn = face_index_map[i];
                 if (0 <= fn) {
