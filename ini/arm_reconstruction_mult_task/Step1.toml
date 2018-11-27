@@ -25,8 +25,8 @@ optimizing_loss = ['loss']
 [hyper_parameter]
 n_encode_dim = 512
 n_layers = 3
-volume_gaussian_sigma = 0.01
-label_gaussian_sigma = 0.05
+volume_gaussian_sigma = 1e-3
+label_gaussian_sigma = 5e-2
 n_res_layers = 4
 
 [[process]]
