@@ -41,11 +41,13 @@ class Encoder(chainer.Chain):
         self.layers['fc' + str(self.n_layers)] = \
             L.Linear(None, out_size=encode_dim)
 
-        super().__init__(self, **self.layers)
+        super().__init__(**self.layers)
 
     def __call__(self, x):
-        for i in range(self.n_layers + 1):
+        h = x
+        for i in range(self.n_layers):
             h = self.apply(h, i)
+        h = self.layers['fc' + str(self.n_layers)](h)
         return h
 
     def apply(self, h, index):
@@ -88,10 +90,10 @@ class Decoder(chainer.Chain):
 
         self.layers['fc0'] = L.Linear(None, output_dim)
 
-        super().__init__(self, **self.layers)
+        super().__init__(**self.layers)
 
     def __call__(self, x):
-        h = F.reshape((x.shape[0], -1), x)
+        h = F.reshape(x, (x.shape[0], -1))
         for i in range(self.n_layers + 1, 0):
             h = self.apply(h, i)
         h = self.layers['fc0'](h)
@@ -139,19 +141,20 @@ class AutoEncoder(chainer.Chain):
     def __call__(self, x):
         h = self.encoder(x)
 
-        if self.latent_activation:
-            h = F.sigmoid(h)
+        # if self.latent_activation:
+        #    h = F.sigmoid(h)
 
         self.stores['encoder'] = h
 
         results = []
         latent_h = h
-        for decoder in self.decoders:
-            if self.use_skipping_connection:
-                h = decoder(latent_h, self.encoder.stores)
-            else:
-                h = decoder(h)
-            h = utils.crop(h, x.shape, self.n_dim)
-            results.append(h)
+        # for decoder in self.decoders:
+        #    if self.use_skipping_connection:
+        #        h = decoder(latent_h, self.encoder.stores)
+        #    else:
+        #        h = decoder(h)
+        #    h = utils.crop(h, x.shape, self.n_dim)
+        #    results.append(h)
+        h = self.decoder(h)
 
-        return results
+        return h
