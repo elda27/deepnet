@@ -22,6 +22,7 @@ from itertools import cycle
 import json
 import log_util
 import tqdm
+from pathlib import Path
 
 
 def main():
@@ -99,7 +100,8 @@ def main():
         if pos == -1:
             raise ValueError('Bad format save image list: {}'.format(string))
         key = tuple(string[:pos].split(','))
-        save_image_list[key] = string[pos + 1:]
+        output_filename = string[pos + 1:]
+        save_image_list[key] = output_filename
 
     # Start inference.
     variables = {}
@@ -119,7 +121,7 @@ def main():
 
             # Inference
             for j, stage_input in enumerate(input_vars):
-                for key in redirects: # Redirect input variables
+                for key in redirects:  # Redirect input variables
                     stage_input[redirects[key]] = stage_input[key]
 
                 network_manager(mode='test', **stage_input)
@@ -134,6 +136,21 @@ def main():
                 print('\n'.join([str(node)
                                  for node in network_manager.validate_network()]))
                 raise
+
+
+def save_variables(output_dir, variables, save_image_list, index_list):
+    for key, output_filename in save_image_list.items():
+        path = Path(output_filename)
+        if path.suffix in ('.png', '.jpg', '.jpeg', '.mhd'):
+            save_images_wrap(
+                output_dir, variables, key,
+                output_filename, index_list
+            )
+        elif path.suffix in ('.ply'):
+            save_polys(
+                output_dir, variables, key,
+                output_filename, index_list
+            )
 
 
 def save_images(output_dir, variables, save_image_list, index_list):
@@ -159,6 +176,28 @@ def save_images(output_dir, variables, save_image_list, index_list):
             save_image(current_output_filename, image[i], spacing[i])
 
 
+def save_images_wrap(output_dir, variables, key, output_filename, index_list):
+    image_name = key[0]
+    image = deepnet.utils.unwrapped(variables[image_name])
+    spacing = variables['spacing'] if len(key) == 1 else variables[key[1]]
+
+    if isinstance(image, list):
+        image = np.asarray(image)
+
+    for i in range(image.shape[0]):
+        case_name = variables['case_name'][i]
+        variables['__index__'] = index_list[case_name]
+        index_list[case_name] += 1
+        # make output dir
+        current_output_dir = os.path.join(output_dir, case_name)
+        os.makedirs(current_output_dir, exist_ok=True)
+
+        # save images
+        current_output_filename = os.path.join(
+            current_output_dir, output_filename.format(**variables))
+        save_image(current_output_filename, image[i], spacing[i])
+
+
 def save_image(output_filename, image, spacing):
     if image.shape[0] == 1:
         image = image[0]
@@ -166,6 +205,66 @@ def save_image(output_filename, image, spacing):
     if spacing is not None and len(spacing) < image.ndim:
         spacing = tuple(spacing) + (1,) * (image.ndim - len(spacing))
     deepnet.utils.visualizer.save_image(output_filename, image, spacing)
+
+
+def save_polys(output_dir, variables, key, output_filename, index_list):
+    poly_name = key[0]
+    poly_faces = key[1]
+
+    verts = variables[poly_name]
+    faces = variables[poly_faces]
+
+    for i in range(verts.shape[0]):
+        case_name = variables['case_name'][i]
+        variables['__index__'] = index_list[case_name]
+        index_list[case_name] += 1
+
+        # make output dir
+        current_output_dir = os.path.join(output_dir, case_name)
+        os.makedirs(current_output_dir, exist_ok=True)
+
+        # save polys
+        current_output_filename = os.path.join(
+            current_output_dir, output_fiename.format(**variables))
+
+        surface = convert_poly_numpy_to_vtk(verts[i], polys[i])
+        writer = vtk.vtkPLYWriter()
+        writer.SetInputData(surface)
+        writer.SetFileName(self.output_filename.format(
+            **self.variables, **preset))
+        writer.Update()
+
+
+def convert_poly_numpy_to_vtk(vertices, faces):
+    if not isinstance(faces, vtk.vtkPoints):
+        vtkArray = numpy_to_vtk(vertices, deep=1)
+        points = vtk.vtkPoints()
+        points.SetData(vtkArray)
+    else:
+        points = vertices
+
+    if not isinstance(faces, vtk.vtkCellArray):
+        triangles = vtk.vtkCellArray()
+
+        for i in range(len(faces)):
+            triangle = vtk.vtkTriangle()
+
+            triangle.GetPointIds().SetId(0, faces[i, 0])
+            triangle.GetPointIds().SetId(1, faces[i, 1])
+            triangle.GetPointIds().SetId(2, faces[i, 2])
+
+            triangles.InsertNextCell(triangle)
+    else:
+        triangles = faces
+
+    # create a polydata object
+    poldata = vtk.vtkPolyData()
+
+    # add the geometry and topology to the polydata
+    poldata.SetPoints(points)
+    poldata.SetPolys(triangles)
+
+    return poldata
 
 
 def build_arguments():
