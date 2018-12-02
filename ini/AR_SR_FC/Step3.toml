@@ -83,15 +83,15 @@ process="AE.decoder"
 output="gpu_reconstruct_vertices"
 
 [[network]]
-input=[ "gpu_vertices", "gpu_reconstruct_vertices" ]
+input=[ "gpu_flatten_vertices", "gpu_reconstruct_flatten_vertices" ]
 process="loss.euclidean_distance"
 output="loss"
 test=false
 
 [[network]]
-input="gpu_reconstruct_vertices"
+input="gpu_reconstruct_flatten_vertices"
 process="batch_reshape"
-output="gpu_reconstruct_vertices_reformed"
+output="gpu_reconstruct_vertices"
 shape=["${hyper_parameter.n_points}", "-1"]
 
 
@@ -102,7 +102,7 @@ names = [
   "truth", "reconstruct"
 ]
 vertices_names = [ 
-  "gpu_vertices", "gpu_reconstruct_vertices_reformed" ,
+  "gpu_vertices", "gpu_reconstruct_vertices" ,
 ]
 faces_names= [
   "faces", "faces"
