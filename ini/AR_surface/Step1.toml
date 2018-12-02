@@ -6,7 +6,9 @@ input = [
 
 logging = [
   '__train_iteration__', 
-  'train.loss', 'valid.loss'
+  'train.loss', 'valid.loss',
+  'train.loss_3d', 'valid.loss_3d',
+  'train.loss_2d', 'valid.loss_2d',
 ]
 
 archive_loss = 'loss'
@@ -15,8 +17,8 @@ optimizing_loss = ['loss']
 
 [hyper_parameter]
 n_encode_dim = 512
-n_layers = 16
-gaussian_sigma = 20
+n_layers = 4
+gaussian_sigma = 1e-4
 n_points = 5001
 
 [[process]]
@@ -31,11 +33,22 @@ dropout = "dropout"
 use_batch_norm = true
 n_layers = "${hyper_parameter.n_layers}"
 
+[[process]]
+label="MeshRenderer"
+type="network.mesh_renderer"
+views=[[1.0, 0.0, 90.0], [1.0, 89.0, 90.0]]
+
 # Network declaration
 [[network]]
-input=["vertices"]
+input=["vertices", "faces"]
 process="to_gpu"
-output=["gpu_vertices"]
+output=["gpu_vertices", "gpu_f_faces"]
+
+[[network]]
+input=["gpu_f_faces"]
+process="cast_type"
+dtype="int32"
+output=["gpu_faces"]
 
 ## Apply gaussian noise
 [[network]]
@@ -53,35 +66,71 @@ output="gpu_flatten_vertices"
 shape=[-1]
 
 [[network]]
-input="gpu_flatten_vertices"
-label="AE"
-process="AE"
-output="gpu_reconstruct_vertices"
+input="gpu_noisy_vertices"
+process="batch_reshape"
+output="gpu_flatten_noisy_vertices"
+shape=[-1]
 
 [[network]]
-input=[ "gpu_vertices", "gpu_reconstruct_vertices" ]
-process="loss.euclidean_distance"
-output="loss"
+input="gpu_flatten_noisy_vertices"
+label="AE"
+process="AE"
+output="gpu_flatten_reconstruct_vertices"
+
+[[network]]
+input=[ "gpu_flatten_vertices", "gpu_flatten_reconstruct_vertices" ]
+process="loss.l2_norm_distance"
+output="loss_3d"
 test=false
 
 [[network]]
-input="gpu_reconstruct_vertices"
+input="gpu_flatten_reconstruct_vertices"
 process="batch_reshape"
-output="gpu_reconstruct_vertices_reformed"
-shape=["${n_points}", "-1"]
+output="gpu_reconstruct_vertices"
+shape=["${hyper_parameter.n_points}", "-1"]
 
+[[network]]
+input=["gpu_vertices", "gpu_faces"]
+process="MeshRenderer"
+output="gpu_rendering_image"
+
+[[network]]
+input=["gpu_reconstruct_vertices", "gpu_faces"]
+process="MeshRenderer"
+output="gpu_reconstruct_rendering_image"
+
+[[network]]
+input=[ "gpu_rendering_image", "gpu_reconstruct_rendering_image" ]
+process="loss.l2_norm_distance"
+output="loss_2d"
+test=false
+
+[[network]]
+input=["loss_3d", "loss_2d"]
+process="reduce"
+output="loss"
+test=false
 
 # Visualize declaration
 [[visualize]]
 type  = "ply_write"
 names = [
-  "truth", "reconstruct"
+  "truth", "reconstruct", "noisy_truth"
 ]
 vertices_names = [ 
-  "gpu_vertices", "gpu_reconstruct_vertices_reformed" ,
+  "gpu_vertices", "gpu_reconstruct_vertices" , "gpu_noisy_vertices"
 ]
 faces_names= [
-  "faces", "faces"
+  "faces", "faces", "faces"
 ]
 output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__name__}_{__index__}.mhd'
 num_surfaces = 3
+
+[[visualize]]
+type  = "image_write"
+image_names = [ 
+  "gpu_reconstruct_rendering_image", "gpu_rendering_image"
+]
+output_filename = '${visualize_dir}/{__train_iteration__:08d}_{__name__}_{__index__}.mhd'
+num_images = 3
+spacing=[1,1,1]
