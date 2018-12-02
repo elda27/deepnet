@@ -106,9 +106,9 @@ class Rasterize(chainer.Function):
             loop = self.xp.arange(self.batch_size * self.num_faces).astype('int32')
             lock = self.xp.zeros(self.face_index_map.shape, 'int32')
             chainer.cuda.elementwise(
-                'int32 _, raw float32 faces, raw int32 face_index_map, raw float32 weight_map, ' +
+                'int32 _, raw float32 faces',
+                'raw int32 face_index_map, raw float32 weight_map,'
                 'raw float32 depth_map, raw float32 face_inv_map, raw int32 lock',
-                '',
                 string.Template('''
                     /* batch number, face, number, image size, face[v012][RGB] */
                     const int bn = i / ${num_faces};
@@ -370,9 +370,9 @@ class Rasterize(chainer.Function):
         # for each pixel
         loop = self.xp.arange(self.batch_size * self.image_size * self.image_size).astype('int32')
         chainer.cuda.elementwise(
-            'int32 _, raw float32 faces, raw float32 textures, raw int32 face_index_map, raw float32 weight_map, ' +
-            'raw float32 depth_map, raw float32 rgb_map, raw int32 sampling_index_map, raw float32 sampling_weight_map',
-            '',
+            'int32 _, raw float32 faces, raw float32 textures, raw int32 face_index_map, raw float32 weight_map, '
+            'raw float32 depth_map', 
+            'raw float32 rgb_map, raw int32 sampling_index_map, raw float32 sampling_weight_map',
             string.Template('''
                 const int face_index = face_index_map[i];
 
@@ -757,9 +757,9 @@ class Rasterize(chainer.Function):
 
         loop = self.xp.arange(self.batch_size * self.image_size * self.image_size).astype('int32')
         chainer.cuda.elementwise(
-            'int32 _, raw int32 face_index_map, raw T sampling_weight_map, raw int32 sampling_index_map, ' +
-            'raw T grad_rgb_map, raw T grad_textures',
-            '',
+            'int32 _, raw int32 face_index_map, raw T sampling_weight_map, raw int32 sampling_index_map,'
+            'raw T grad_rgb_map',
+            'raw T grad_textures',
             string.Template('''
                 const int face_index = face_index_map[i];
                 if (0 <= face_index) {
@@ -769,13 +769,13 @@ class Rasterize(chainer.Function):
                     int bn = i / (is * is);    // batch number [0 -> bs]
 
                     float* grad_texture = &grad_textures[(bn * nf + face_index) * ts * ts * ts * 3];
-                    float* sampling_weight_map_p = &sampling_weight_map[i * 8];
-                    int* sampling_index_map_p = &sampling_index_map[i * 8];
+                    const float* sampling_weight_map_p = &sampling_weight_map[i * 8];
+                    const int* sampling_index_map_p = &sampling_index_map[i * 8];
                     for (int pn = 0; pn < 8; pn++) {
                         float w = *sampling_weight_map_p++;
                         int isc = *sampling_index_map_p++;
                         float* grad_texture_p = &grad_texture[isc * 3];
-                        float* grad_rgb_map_p = &grad_rgb_map[i * 3];
+                        const float* grad_rgb_map_p = &grad_rgb_map[i * 3];
                         for (int k = 0; k < 3; k++) atomicAdd(grad_texture_p++, w * *grad_rgb_map_p++);
                     }
                 }

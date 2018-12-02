@@ -67,7 +67,8 @@ def load_textures(filename_obj, filename_mtl, texture_size):
     #
     colors, texture_filenames = load_mtl(filename_mtl)
 
-    textures = np.zeros((faces.shape[0], texture_size, texture_size, texture_size, 3), 'float32') + 0.5
+    textures = np.zeros(
+        (faces.shape[0], texture_size, texture_size, texture_size, 3), 'float32') + 0.5
     textures = chainer.cuda.to_gpu(textures)
 
     #
@@ -79,7 +80,8 @@ def load_textures(filename_obj, filename_mtl, texture_size):
 
     #
     for material_name, filename_texture in texture_filenames.items():
-        filename_texture = os.path.join(os.path.dirname(filename_obj), filename_texture)
+        filename_texture = os.path.join(
+            os.path.dirname(filename_obj), filename_texture)
         image = skimage.io.imread(filename_texture).astype('float32') / 255.
         image = chainer.cuda.to_gpu(image)
         image = image[::-1, ::1]
@@ -89,8 +91,8 @@ def load_textures(filename_obj, filename_mtl, texture_size):
         loop = np.arange(textures.size / 3).astype('int32')
         loop = chainer.cuda.to_gpu(loop)
         chainer.cuda.elementwise(
-            'int32 j, raw float32 image, raw float32 faces, raw float32 textures, raw int32 is_update',
-            '',
+            'int32 j, raw float32 image, raw float32 faces',
+            'raw float32 textures, raw int32 is_update',
             string.Template('''
                 const int ts = ${texture_size};
                 const int fn = i / (ts * ts * ts);
@@ -179,8 +181,10 @@ def load_obj(filename_obj, normalization=True, texture_size=4, load_texture=Fals
     if load_texture:
         for line in open(filename_obj).readlines():
             if line.startswith('mtllib'):
-                filename_mtl = os.path.join(os.path.dirname(filename_obj), line.split()[1])
-                textures = load_textures(filename_obj, filename_mtl, texture_size)
+                filename_mtl = os.path.join(
+                    os.path.dirname(filename_obj), line.split()[1])
+                textures = load_textures(
+                    filename_obj, filename_mtl, texture_size)
         if textures is None:
             raise Exception('Failed to load textures.')
 
