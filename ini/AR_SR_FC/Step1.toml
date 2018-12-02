@@ -68,7 +68,7 @@ test=false
 input="gpu_reconstruct_vertices"
 process="batch_reshape"
 output="gpu_reconstruct_vertices_reformed"
-shape=["${n_points}", "-1"]
+shape=["${hyper_parameter.n_points}", "-1"]
 
 
 # Visualize declaration
