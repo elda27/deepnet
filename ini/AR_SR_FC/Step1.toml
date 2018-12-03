@@ -60,7 +60,7 @@ output="gpu_reconstruct_flatten_vertices"
 
 [[network]]
 input=[ "gpu_flatten_vertices", "gpu_reconstruct_flatten_vertices" ]
-process="loss.euclidean_distance"
+process="loss.l2_norm_distance"
 output="loss"
 test=false
 

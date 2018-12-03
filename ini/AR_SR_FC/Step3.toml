@@ -16,7 +16,7 @@ freezing_layer = [ 'AE.encoder' ]
 
 [hyper_parameter]
 n_encode_dim = 512
-n_layers = 16
+n_layers = 4
 gaussian_sigma = 20
 n_points = 5001
 
@@ -84,7 +84,7 @@ output="gpu_reconstruct_vertices"
 
 [[network]]
 input=[ "gpu_flatten_vertices", "gpu_reconstruct_flatten_vertices" ]
-process="loss.euclidean_distance"
+process="loss.l2_norm_distance"
 output="loss"
 test=false
 
