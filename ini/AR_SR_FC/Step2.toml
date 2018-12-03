@@ -79,7 +79,7 @@ output="latent_vector"
 input="latent_vector"
 label="AE"
 process="AE.decoder"
-output="gpu_reconstruct_vertices"
+output="gpu_reconstruct_flatten_vertices"
 
 [[network]]
 input=[ "gpu_flatten_vertices", "gpu_reconstruct_flatten_vertices" ]
