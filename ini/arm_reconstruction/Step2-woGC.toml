@@ -23,6 +23,8 @@ n_layers = 3
 gaussian_sigma = 20
 n_res_layers = 4
 
+num_projection_views = 2
+
 weight_reconstruct = 1.0
 weight_gradient = -1e4
 
@@ -50,7 +52,7 @@ decoder = "CAE.decoder"
 n_dim = 2
 output_shape = [64, 64, 64]
 
-in_channel = 2
+in_channel = "${num_projection_views}"
 
 [[initialize]]
 mode = "load"
