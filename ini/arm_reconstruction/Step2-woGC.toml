@@ -52,7 +52,7 @@ decoder = "CAE.decoder"
 n_dim = 2
 output_shape = [64, 64, 64]
 
-in_channel = "${num_projection_views}"
+in_channel = "${hyper_parameter.num_projection_views}"
 
 [[initialize]]
 mode = "load"
