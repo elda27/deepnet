@@ -31,6 +31,8 @@ n_layers = 3
 gaussian_sigma = 20
 n_res_layers = 4
 
+num_projection_views = 2
+
 weight_reconstruct = 1.0
 weight_latent_representation = 1e3
 
