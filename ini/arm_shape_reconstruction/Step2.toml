@@ -22,6 +22,7 @@ n_encode_dim = 512
 n_layers = 3
 gaussian_sigma = 0.2
 n_res_layers = 4
+num_projection_views = 2
 
 
 [[process]]
@@ -49,7 +50,7 @@ decoder = "CAE_label.decoder"
 n_dim = 2
 output_shape = [64, 64, 64]
 
-in_channel = 2
+in_channel = "${hyper_parameter.num_projection_views}"
 
 [[initialize]]
 mode = "load"

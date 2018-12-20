@@ -33,6 +33,7 @@ n_res_layers = 4
 
 weight_reconstruct = 1.0
 weight_latent_representation = 1e3
+num_projection_views = 2
 
 [[process]]
 label  = "CAE_label"
@@ -58,7 +59,7 @@ decoder = "CAE_label.decoder"
 n_dim = 2
 output_shape = [64, 64, 64]
 
-in_channel = 2
+in_channel = "${hyper_parameter.num_projection_views}"
 
 [[initialize]]
 mode = "load"
