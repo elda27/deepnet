@@ -264,6 +264,9 @@ def load_image(filename):
         [img, img_header] = mhd.read(filename)
         spacing = img_header['ElementSpacing']
         
+        if img.ndim == 2:
+            img = img[np.newaxis, ...]
+
         logger.debug('Loading image shape: ' + str(img.shape))
 
         return img, spacing
