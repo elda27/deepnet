@@ -24,6 +24,9 @@ import log_util
 import tqdm
 from pathlib import Path
 
+import vtk
+from vtk.util.numpy_support import numpy_to_vtk
+
 
 def main():
     parser = build_arguments()
@@ -130,8 +133,10 @@ def main():
 
             # Save images
             try:
-                save_images(args.output_dir, variables,
-                            save_image_list, index_list)
+                # save_images(args.output_dir, variables,
+                #            save_image_list, index_list)
+                save_variables(args.output_dir, variables,
+                               save_image_list, index_list)
             except KeyError:
                 print('\n'.join([str(node)
                                  for node in network_manager.validate_network()]))
@@ -179,7 +184,10 @@ def save_images(output_dir, variables, save_image_list, index_list):
 def save_images_wrap(output_dir, variables, key, output_filename, index_list):
     image_name = key[0]
     image = deepnet.utils.unwrapped(variables[image_name])
-    spacing = variables['spacing'] if len(key) == 1 else variables[key[1]]
+    if len(key) == 1:
+        spacing = variables.get('spacing', None)
+    else:
+        spacing = variables[key[1]]
 
     if isinstance(image, list):
         image = np.asarray(image)
@@ -195,7 +203,11 @@ def save_images_wrap(output_dir, variables, key, output_filename, index_list):
         # save images
         current_output_filename = os.path.join(
             current_output_dir, output_filename.format(**variables))
-        save_image(current_output_filename, image[i], spacing[i])
+        if spacing is None:
+            s = None
+        else:
+            s = spacing[i]
+        save_image(current_output_filename, image[i], s)
 
 
 def save_image(output_filename, image, spacing):
@@ -211,8 +223,8 @@ def save_polys(output_dir, variables, key, output_filename, index_list):
     poly_name = key[0]
     poly_faces = key[1]
 
-    verts = variables[poly_name]
-    faces = variables[poly_faces]
+    verts = deepnet.utils.unwrapped(variables[poly_name])
+    faces = deepnet.utils.unwrapped(variables[poly_faces])
 
     for i in range(verts.shape[0]):
         case_name = variables['case_name'][i]
@@ -225,13 +237,13 @@ def save_polys(output_dir, variables, key, output_filename, index_list):
 
         # save polys
         current_output_filename = os.path.join(
-            current_output_dir, output_fiename.format(**variables))
+            current_output_dir, output_filename.format(**variables))
 
-        surface = convert_poly_numpy_to_vtk(verts[i], polys[i])
+        surface = convert_poly_numpy_to_vtk(verts[i], faces[i])
         writer = vtk.vtkPLYWriter()
         writer.SetInputData(surface)
-        writer.SetFileName(self.output_filename.format(
-            **self.variables, **preset))
+        writer.SetFileName(output_filename.format(
+            **variables))
         writer.Update()
 
 
