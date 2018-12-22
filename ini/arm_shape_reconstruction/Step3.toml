@@ -109,7 +109,7 @@ output="loss_label"
 test=false
 
 [[network]]
-input = "gpu_reconstruct_label_softmax_probs"
+input = "gpu_reconstruct_label_probs"
 process = "CAE_label.encoder"
 output = "gpu_reconstruct_latent"
 
