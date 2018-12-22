@@ -214,7 +214,9 @@ def save_image(output_filename, image, spacing):
     if image.shape[0] == 1:
         image = image[0]
 
-    if spacing is not None and len(spacing) < image.ndim:
+    if spacing is None:
+        spacing = (1,) * image.ndim
+    elif len(spacing) < image.ndim:
         spacing = tuple(spacing) + (1,) * (image.ndim - len(spacing))
     deepnet.utils.visualizer.save_image(output_filename, image, spacing)
 
