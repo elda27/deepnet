@@ -27,3 +27,27 @@ def apply_gaussian_noise(x, sigma=1.0, clip=None):
         result = F.clip(result, min_value, max_value)
 
     return result
+
+
+@register_process()
+def apply_uniform_noise(x, scale=1.0, bias=0.0, clip=None):
+    """Apply uniform noise to n-dimensional image.
+
+    Args:
+        x (chainer.Variable): Input n-dimensional image.
+        scale (float, optional): Defaults to 1.0. A scale of noise.
+        bias (list[float], optional): Defaults to 0.0. A bias of noise.
+
+    Returns:
+        chainer.Variable: Images applied uniform noise
+    """
+
+    xp = cuda.get_array_module(x)
+    noise = chainer.Variable(xp.random.rand(x.data))
+
+    result = x + noise
+    if clip is not None:
+        min_value, max_value = clip
+        result = F.clip(result, min_value, max_value)
+
+    return result
