@@ -3,7 +3,7 @@ from deepnet.core.registration import add_process
 
 add_process('chainer.reshape', F.reshape)
 add_process('chainer.mean', F.mean)
-add_process('chainer.sum', F.mean)
+add_process('chainer.sum', F.sum)
 add_process('chainer.sigmoid', F.sigmoid)
 add_process('chainer.softmax', F.softmax)
 add_process('chainer.argmax', F.argmax)
