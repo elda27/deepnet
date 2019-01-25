@@ -33,13 +33,13 @@ penalty_mode = {
     'l1_regularization': lambda x: F.mean(
         F.sum(
             F.absolute(x),
-            axis=list(range(1, x.ndim))
+            axis=tuple(range(1, x.ndim))
         )
     ),
     'l2_regularization': lambda x: F.mean(
         F.sum(
             x ** 2,
-            axis=list(range(1, x.ndim))
+            axis=tuple(range(1, x.ndim))
         ) / 2
     ),
 }
