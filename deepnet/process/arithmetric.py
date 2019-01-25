@@ -30,13 +30,13 @@ penalty_mode = {
     'min': lambda x: x,
     'log_max': lambda x: -F.log(x),
     'log_min': lambda x: F.log(x),
-    'l1_regularization': lambda x: loss_l1 = F.mean(
+    'l1_regularization': lambda x: F.mean(
         F.sum(
             F.absolute(self.model.latent_vector),
             axis=tuple(range(1, x.ndim - 2))
         )
     ),
-    'l2_regularization': lambda x: loss_l2 = F.mean(
+    'l2_regularization': lambda x: F.mean(
         F.sum(
             self.model.latent_vector ** 2,
             axis=tuple(range(1, x.ndim - 2))
