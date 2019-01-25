@@ -78,18 +78,27 @@ def main():
             args.network_config, is_variable_expansion=False)
         network_config = update_log_dir(
             network_config, log_dirs)  # Update log directory
+        if args.hyper_param is not None:
+            network_config['hyper_parameter'].update(parse_hyper_parameter(
+                args.hyper_param, network_config['hyper_parameter']
+            ))
         network_config = deepnet.config.expand_variable(network_config)
+
     network_manager, visualizers = deepnet.core.build_networks(network_config)
 
     for name, proc in deepnet.core.get_created_process_dict().items():
-        if proc not in deepnet.core.get_updatable_process_list():
-            proc.to_gpu()
-            continue
+        # if proc not in deepnet.core.get_updatable_process_list():
+        #     if hasattr(proc, 'to_gpu'):
+        #         proc.to_gpu()
+        #     continue
         model_list = list(
             glob.glob(os.path.join(archive_dir, name + '_*.npz')))
         if len(model_list) == 0:
-            raise ValueError(
-                'Model not found: {} in {}'.format(name, archive_dir))
+            if hasattr(proc, 'to_gpu'):
+                proc.to_gpu()
+            continue
+            # raise ValueError(
+            #     'Model not found: {} in {}'.format(name, archive_dir))
         model_filename = model_list[-1]
         chainer.serializers.load_npz(model_filename, proc)
         proc.to_gpu()
@@ -141,6 +150,36 @@ def main():
                 print('\n'.join([str(node)
                                  for node in network_manager.validate_network()]))
                 raise
+
+
+def parse_hyper_parameter(params, defined_params):
+    if params is None:
+        return defined_params
+
+    result_params = {}
+    for param in params:
+        pos = param.find(':')
+        target = param[:pos]
+        value = param[pos+1:]
+
+        assert target in defined_params, 'Unknown hyper parameter: {}'.format(
+            target)
+
+        type_ = type(defined_params[target])
+        try:
+            if type_ == bool:
+                if value.lower() in ('true', 'on', '1'):
+                    value = True
+                elif value.lower() in ('false', 'off', '0'):
+                    value = False
+                else:
+                    raise TypeError()
+            else:
+                result_params[target] = type_(value)
+        except:
+            raise TypeError(
+                'Invalid value detected on the cast:{}, str->{}'.format(value, type_))
+    return result_params
 
 
 def save_variables(output_dir, variables, save_image_list, index_list):
@@ -308,6 +347,8 @@ def build_arguments():
 
     parser.add_argument('--redirect', type=str, nargs='+', default=[],
                         help='To redirect input variables.(format:<source_name>:<dest_name>')
+    parser.add_argument('--hyper-param', type=str, default=None, nargs='*',
+                        help='Set hyper parameters defined on network config. (<param name>:<value>)')
 
     return parser
 
