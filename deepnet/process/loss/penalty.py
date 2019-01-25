@@ -21,6 +21,4 @@ def constrain_skip_connection(x, t, normalize=False):
                 normalize=normalize))
         d = sum(ds)
 
-    xp = cuda.get_array_module(d)
-
-    return 1.0 / (d + xp.array(1e-8, dtype=xp.float32))
+    return 1.0 / (d + 1e-8)
