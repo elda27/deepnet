@@ -120,6 +120,7 @@ def main():
         if use_gpu:
             model.to_gpu()
         optimizer.setup(model)
+    optimizer.add_hook(chainer.optimizer.WeightDecay(0.0001))
     optimizers.append(optimizer)
 
     # Freeze to update layer
