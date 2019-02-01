@@ -285,11 +285,8 @@ class ImageDataGenerator(object):
         else:
             self.zx, self.zy = xp.random.uniform(
                 self.zoom_range[0], self.zoom_range[1], 2)
-<<<<<<< HEAD
         if self.keep_aspect:
             self.zy = self.zx
-=======
->>>>>>> f5f732fe96fd1f50e4611508802946e5ee1755de
 
         if self.horizontal_flip:
             self.horizontal_flip_prob = xp.random.random()
@@ -344,9 +341,6 @@ class ImageDataGenerator(object):
         # """ apply transform """
         return self.fixed_transform(x)
 
-<<<<<<< HEAD
-    def fixed_transform(self, input):
-=======
     def fixed_transform(self, input, label=False):
         old_interp_order = self.interp_order
         old_constant = self.cval
@@ -361,7 +355,6 @@ class ImageDataGenerator(object):
             self.cval = old_constant
 
     def fixed_transform_(self, input):
->>>>>>> f5f732fe96fd1f50e4611508802946e5ee1755de
         x = None
         xp = cuda.get_array_module(input)
         if isinstance(x, chainer.Variable):
