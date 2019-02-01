@@ -58,7 +58,7 @@ class Segnet(chainer.Chain):
         h = self.encoder(x)
         self.stores['encoder'] = h
         self.stores['fc'] = h
-        self.decode_latent_vector(h, x=x)
+        self.decode_latent_vector(x, h)
 
     def decode_latent_vector(self, x, h):
         if hasattr(self, 'decoder'):
